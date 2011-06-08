@@ -1,0 +1,72 @@
+<!doctype html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>SoundCloud Rec Editor</title>
+  <style>
+    #waveform {
+      width: 100%;
+      min-height: 80px;
+      background-image: url("http://w1.sndcdn.com/2SSAeZaQoS1J_m.png?consumer_key=johan_app");
+      background-color: black;
+    }
+
+    @-webkit-keyframes play {
+      from { width: 0%; }
+      to { width: 100%;  }
+    }
+
+    #seekhead {
+      min-height: inherit;
+      border-right: 1px solid red;
+      -webkit-animation: play 11540ms 1 linear;
+      -webkit-animation-play-state: paused;
+      -webkit-animation-fill-mode: both;
+    }
+
+    #seekhead.playing {
+      -webkit-animation: play 11540ms 1 linear;
+      -webkit-animation-play-state: running;
+      -webkit-animation-fill-mode: both;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="waveform">
+    <div id="seekhead">
+    </div>
+  </div>
+  <script>
+    document.addEventListener('keyup', function(e) {
+      var actions = {
+        32: function() {
+          document.querySelector('#seekhead').classList.toggle('playing');
+        }
+      };
+      actions.hasOwnProperty(e.keyCode) && actions[e.keyCode].call();
+    });
+
+    document.querySelector('#waveform').addEventListener('click', function(e) {
+      var el = document.getElementById('seekhead');
+      e.preventDefault();
+
+      function onTransitionEnd(e) {
+        if (e.animationName != 'play') {
+          e.target.style.webkitTransition = '';
+          e.target.style.width = '';
+          e.target.classList.add('playing');
+        }
+      };
+      el.removeEventListener(onTransitionEnd);
+      el.addEventListener('webkitTransitionEnd', onTransitionEnd);
+
+      el.classList.remove('playing');
+      var percent = (e.clientX  / Number(getComputedStyle(e.target).width.replace('px', '')));
+      el.style.width = percent * 100 + '%';
+      console.log(el.style.width)
+      el.style.webkitTransition = 'width 200ms linear';
+    });
+  </script>
+</body>
+</html>
