@@ -2,22 +2,50 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title>SoundCloud Rec Editor</title>
+  <title>AudioJedit</title>
   <style>
     body {
       background-color: #efefef;
       color: #3e3e3e;
     }
 
+    a, a:visited {
+      color: #7bb;
+    }
+
+    a:hover {
+      color: #eeaeae;
+    }
+
     #wrapper {
-      margin: 10px 0 10px 0;
+      font-family: Helvetica, sans-serif;
+      width: 0 auto;
     }
   </style>
 </head>
 <body>
   <div id="wrapper">
-    <h3>Please provide a username and track.</h3>
-    <h4>Example: <a href="/berlinhunt2/s16-french-accent-scmeetup">http://audiojedit.nodester.com/berlinhunt2/s16-french-accent-scmeetup</a></h4>
+    <h1>AudioJedit</h1>
+    <p>Audio slicing on the browser without Flash! Saving the results is coming soon<br>by <a href="http://about.me/tsenart">Tomás Senart</a></p>
+    <h2>About the hack</h2>
+    <p>
+    Using the WebAudio API to slice and rearrange SoundCloud (DOWNLOADABLE) sounds.<br>
+    Access http://audiojedit.nodester.com/:username/:trackpermalink where /:username/:trackpermalink is the same as the SoundCloud permalink.<br>
+    Example: <a href="http://audiojedit.nodester.com/berlinhunt2/s16-french-accent-scmeetup">http://audiojedit.nodester.com/berlinhunt2/s16-french-accent-scmeetup</a><br>
+    From: <a href="http://soundcloud.com/berlinhunt2/s16-french-accent-scmeetup">http://soundcloud.com/berlinhunt2/s16-french-accent-scmeetup</a><br>
+    </p>
+    <h2>How to use</h2>
+    <p>Select the clip from the blue waveform. When you're done doing the selection that clip will be played.<br>
+    Press enter to add it to the sequencer. Press the space bar to play it all.</p>
+    <h2>Technology used</h2>
+    <ul>
+      <li>WebAudio API</li>
+      <li>Node.js</li>
+      <li>Socket.io</li>
+      <li>jQuery</li>
+    </ul>
+    <h2>Source Code</h2>
+    <a href="https://github.com/tsenart/AudioJedit">https://github.com/tsenart/AudioJedit</a>
   </div>
 </body>
 </html>
