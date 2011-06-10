@@ -47,20 +47,20 @@ Sequencer.prototype.pixelWidth = function() {
   });
 };
 
-var sequencer = new Sequencer();
-var track;
+if (!document.location.pathname.match(/^\/index.*/) && document.location.pathname.length > 1) {
+  $('#home').fadeOut(300, function() {
+    $('#player, #sequencer').fadeIn(400);
+  });
 
-var socket = new io.Socket();
-socket.connect();
-socket.on('message', function(data) {
+  var sequencer = new Sequencer();
+  var track;
 
-  if (!data.audio) {
+  $.getJSON(document.location.pathname + '.json', function(data) {
     track = data;
     $('#player .waveform').css('background-image', 'url("' + track.waveform_url + '")');
-  }
-  else {
+
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', document.location.origin + data.audio, true);
+    xhr.open('GET', document.location.pathname + '/audio', true);
     xhr.responseType = 'arraybuffer';
     xhr.overrideMimeType('text/plain; charset=x-user-defined');
     xhr.onload = function(e) {
@@ -104,11 +104,5 @@ socket.on('message', function(data) {
       }
     };
     xhr.send();
-  }
-})
-
-if (document.location.pathname.split('/').length == 3)
-  socket.send({ url: document.location.href });
-
-
-
+  });
+}

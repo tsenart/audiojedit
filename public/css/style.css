@@ -1,0 +1,57 @@
+body {
+  background-color: #efefef;
+  color: #3e3e3e;
+}
+
+a, a:visited {
+  color: #7bb;
+}
+
+a:hover {
+  color: #eeaeae;
+}
+
+.warning {
+  font-weight: bold;
+  color: #eeaaaa;
+}
+
+#wrapper {
+  font-family: Helvetica;
+  margin: 10px 0 10px 0;
+}
+
+#player, #sequencer {
+  display: none;
+  position: relative;
+  height: 280px;
+  width: 100%;
+}
+
+#player .waveform {
+  height: 100%;
+  background-color: #aee;
+}
+
+#sequencer .waveform {
+  height: 100%;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #8a8a8a;
+  float: left;
+  height: 100%;
+  width: 1px;
+}
+
+#sequencer .clip {
+  display: inline-block;
+  background-color: #eeaeae;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  float: left;
+}
