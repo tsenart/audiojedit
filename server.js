@@ -62,7 +62,7 @@ var router = bee.route({
         })
         .on('end', function() {
           track = JSON.parse(track);
-          reqOptions = url.parse(track.download_url);
+          reqOptions = url.parse(track.stream_url);
           reqOptions = {
             host: reqOptions.host,
             port: 80,
