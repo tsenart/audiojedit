@@ -5,6 +5,12 @@ var
   bee = require('beeline');
 
 
+var errorHandler = function(err, res) {
+  console.log(err);
+  res.writeHead(500);
+  res.end();
+};
+
 var scResolve = function(resource, finalResponse, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
@@ -20,9 +26,11 @@ var scResolve = function(resource, finalResponse, callback) {
       finalResponse.end();
     }
     else
-        !!callback && callback(res);
+      callback && callback(res);
   })
-  .on('error', console.log)
+  .on('error', function(err) {
+    errorHandler(err, finalResponse);
+  })
   .end();
 };
 
@@ -65,7 +73,6 @@ var router = bee.route({
           reqOptions = url.parse(track.stream_url);
           reqOptions = {
             host: reqOptions.host,
-            port: 80,
             path: reqOptions.pathname + '?client_id=gGt2hgm7KEj3b710HlJw',
             method: 'HEAD'
           };
@@ -81,7 +88,6 @@ var router = bee.route({
               reqOptions = url.parse(res.headers.location);
               reqOptions = {
                 host: reqOptions.host,
-                port: 80,
                 path: reqOptions.pathname + reqOptions.search,
               };
 
@@ -95,14 +101,20 @@ var router = bee.route({
                   finalResponse.end();
                 });
               })
-              .on('error', console.log);
+              .on('error', function(err) {
+                errorHandler(err, finalResponse);
+              })
             }
           })
-          .on('error', console.log)
+          .on('error', function(err) {
+            errorHandler(err, finalResponse);
+          })
           .end();
         })
       })
-      .on('error', console.log)
+      .on('error', function(err) {
+        errorHandler(err, finalResponse);
+      })
     });
   },
 
@@ -124,7 +136,6 @@ var router = bee.route({
         var reqOptions = url.parse(res.headers.location);
         reqOptions = {
           host: reqOptions.host,
-          port: 80,
           path: reqOptions.pathname + reqOptions.search
         };
 
@@ -137,7 +148,9 @@ var router = bee.route({
             finalResponse.end();
           });
         })
-        .on('error', console.log);
+        .on('error', function(err) {
+          errorHandler(err, finalResponse);
+        })
       }
     });
   }

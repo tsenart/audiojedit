@@ -1,6 +1,10 @@
 body {
+  font-family: Helvetica;
+  margin: 0;
+  padding: 0;
   background-color: #efefef;
   color: #3e3e3e;
+  width: 100%;
 }
 
 a, a:visited {
@@ -16,25 +20,103 @@ a:hover {
   color: #eeaaaa;
 }
 
-#wrapper {
-  font-family: Helvetica;
-  margin: 10px 0 10px 0;
+#home {
+  display: none;
 }
 
-#player, #sequencer {
-  display: none;
-  position: relative;
+#daw {
+  width: 100%;
+  margin: 0 auto;
+}
+
+#soundmanager {
+  position: absolute;
+  background-color: #fefefe;
+  -webkit-border-bottom-left-radius: 15px;
+  -webkit-border-bottom-right-radius: 15px;
+  -webkit-box-shadow: 0 0 15px #222;
+  overflow: hidden;
+  min-height: 50px;
+  width: 100%;
+  top: -40px;
+  z-index: 9999;
+}
+
+#search {
+  width: 20%;
+  height: 40px;
+  -webkit-border-radius: 10px;
+  margin: 8px 25px 0 5px;
+  font-size: 20px;
+  outline: none;
+  clear: both;
+}
+
+#sound-info {
+  height: 40px;
+  color: #0e0e0e;
+  font-size: 20px;
+  margin-left: 10px;
+  width: 80%;
+}
+
+#sounds {
+  margin: 8px 0px 0px 5px;
+}
+
+.sound {
+  height: 100px;
+  width: 100px;
+  cursor: pointer;
+  margin: 0px 10px 8px 0px;
+  border: 1px solid #888;
+  -webkit-border-radius: 15px;
+  opacity: 0.65;
+  -webkit-transition: opacity 0.3s ease-in-out;
+  float: left;
+}
+
+.sound.preview:hover {
+  opacity: 1;
+  -webkit-transition: opacity 0.3s ease-in-out;
+}
+
+.sound.loaded {
+  opacity: 1;
+  -webkit-transition: opacity 0.3s ease-in-out;
+}
+
+#sequencer {
+  margin-top: 40px;
+}
+
+.track {
   height: 280px;
+}
+
+.track:first-of-type {
+  background-color: #666;
+}
+
+.waveform {
+  display: none;
+  opacity: 1;
+  -webkit-transition: opacity 0.4s ease-in-out;
+  height: 100%;
   width: 100%;
 }
 
-#player .waveform {
-  height: 100%;
-  background-color: #aee;
+.waveform.loading {
+  opacity: 0.65;
+  -webkit-transition: opacity 0.4s ease-in-out;
 }
 
-#sequencer .waveform {
+.waveform-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
+  width: 100%;
 }
 
 .playhead {
