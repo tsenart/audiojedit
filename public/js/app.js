@@ -36,6 +36,8 @@ var Track = Backbone.Model.extend({
       _.each(attrs.clips, function(clip) {
         clip.set({ track: this });
       }.bind(this));
+    else
+      attrs.clips = [];
     this.set(attrs);
   },
 
@@ -44,9 +46,9 @@ var Track = Backbone.Model.extend({
     if (clips.length == 0) return;
     else this.stop();
 
-    var cue = -clips[0].duration + (delay || 0);
+    var cue = -clips[0].get('duration') + (delay || 0);
     clips.forEach(function(clip) {
-      cue += clip.duration;
+      cue += clip.get('duration');
       clip.play(cue)
     });
   },
@@ -82,13 +84,14 @@ var Clip = Backbone.Model.extend({
       return;
     }
 
-    var source = track.sequencer.context.createBufferSource();
-    source.buffer = track.sequencer.context.createBuffer(this.get('sound').buffer, false);
-    source.connect(track.sequencer.context.destination);
+    var sequencer = track.get('sequencer');
+    var source = sequencer.context.createBufferSource();
+    source.buffer = sequencer.context.createBuffer(this.get('sound').buffer, false);
+    source.connect(sequencer.context.destination);
     // Issue 82722:  make envelope optional for AudioBufferSourceNode.noteGrainOn method in Web Audio API
     // http://code.google.com/p/chromium/issues/detail?id=82722
     // We don't want fading on this method.
-    source.noteGrainOn(track.sequencer.context.currentTime + (delay || 0), this.get('start'), this.get('duration'));
+    source.noteGrainOn(sequencer.context.currentTime + (delay || 0), this.get('start'), this.get('duration'));
     return this.set({ source: source });
   },
 
@@ -130,31 +133,94 @@ $('#search').keyup(function(ev) {
     $('#sounds').html('');
     _.each(data, function(sound) {
       $('<div class="sound preview"></div>')
+        .attr('draggable', true)
         .css('background-image', 'url("' + (sound.artwork_url || sound.user.avatar_url) + '")')
         .appendTo('#sounds');
     });
+
+    // $('.sound')
+    // .bind('dragstart', function(ev) {
+    //   var ev = ev.originalEvent;
+    //   $('#soundmanager').trigger('mouseleave');
+    //   $(this).css('z-index', 9999);
+    //   ev.dataTransfer.effectAllowed = 'move';
+    //   ev.dataTransfer.setData('application/json', JSON.stringify({ index: $(this).index() }));
+    // })
   });
 });
+
 
 $('#soundmanager').mouseenter(function(ev) {
   $(this).stop().animate({ top: 0 }, 500)
 });
 
 $('#soundmanager').mouseleave(function(ev) {
-  $(this).stop().animate({ top: -$(this).height() + 15 }, 500, 'easeInOutSine');
+  $(this).stop().animate({ top: -$(this).height() + 15 }, 500);
 });
 
+// document.querySelector('body').addEventListener('dragover', function(e) {
+//   alert('YAY');
+//   e.dataTransfer.dropEffect = 'copy';
+//   return false;
+// }, true);
+
+// document.querySelector('.track').addEventListener('drop', function(ev) {
+// ev.stopPropagation();
 $('.sound').live('click', function(ev) {
-  var sound = daw.get('search').results[$(ev.target).index()];
+  ev.preventDefault();
+  // var index = JSON.parse(ev.originalEvent.dataTransfer.getData('application/json')).index;
+  var index = $(this).index();
+  var sound = daw.get('search').results[index];
   $('.track:first .waveform').addClass('loading').attr('src', sound.waveform_url).fadeIn(300);
+  $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
 
   new Sound(daw.get('search').results[$(ev.target).index()], function(sound) {
     daw.set({ sound: sound });
     $('.sound.loaded').removeClass('loaded').addClass('preview');
     $(this).removeClass('preview').addClass('loaded');
-    $('.track:first .waveform').removeClass('loading');
-  }.bind(this));
+    $('.track:first .waveform').removeClass('loading')
+    .imgAreaSelect({
+      handles: true,
+      instance: true,
+      maxHeight: 280,
+      minHeight: 280,
+      onSelectEnd: function(img, selection) {
+        var startTime = ((selection.x1 * sound.duration) / $('.track:first .waveform').width()) / 1000;
+        var endTime   = ((selection.x2 * sound.duration) / $('.track:first .waveform').width()) / 1000;
+        var track = _(daw.get('sequencer').get('tracks')).first();
+        var clip = new Clip({ start: startTime, end: endTime, track: track, sound: sound});
+        track.stop();
+        track.set({ clips: [ clip ] });
+        track.play();
+      }
+    });
+  })
+  // return false;
 });
+
+$('.track-control a').click(function(ev) {
+  ev.preventDefault();
+  console.log(((daw.get('sequencer').get('tracks')[1].duration())))
+  daw.get('sequencer').get('tracks')[1].play();
+  $('.track:last .playhead')
+    .css('-webkit-transition', 'none')
+    .css('left', '0px')
+    .css('-webkit-transition', 'left ' + ((daw.get('sequencer').get('tracks')[1].duration() * $('.track:last').width()) / $('.track:first .waveform').width()) + 'ms linear')
+    .css('left', $('.track:last').width() + 'px')
+});
+
+$(window).keydown(function(ev) {
+  if (ev.keyCode == 13) {
+    daw.get('sequencer').get('tracks')[1].push(daw.get('sequencer').get('tracks')[0].get('clips')[0]);
+    var selection = $('.track:first .waveform').imgAreaSelect({ instance: true }).getSelection(true);
+    $('.track:last').append(
+      $('<div class="clip" draggable="true"></div>')
+      .css('background-image', 'url("' + daw.get('sound').waveform_url + '")')
+      .css('background-position', -selection.x1 + 'px ' + selection.y1 + 'px')
+      .css('width', selection.width)
+    );
+  }
+})
 
 $('.sound').live('mouseenter', function(ev) {
   var sound = daw.get('search').results[$(ev.target).index()];
