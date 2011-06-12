@@ -62,7 +62,9 @@ var Track = Backbone.Model.extend({
   },
 
   duration: function() {
-    return _(this.get('clips')).chain().pluck('duration').reduce(function(a, b) {
+    return _(this.get('clips')).chain().map(function(clip) {
+      return clip.get('duration');
+    }).reduce(function(a, b) {
       return a + b;
     }).value();
   },
@@ -171,22 +173,25 @@ $('.sound').live('click', function(ev) {
   // var index = JSON.parse(ev.originalEvent.dataTransfer.getData('application/json')).index;
   var index = $(this).index();
   var sound = daw.get('search').results[index];
-  $('.track:first .waveform').addClass('loading').attr('src', sound.waveform_url).fadeIn(300);
+  $('.track:first').html(
+    $('<div class="clip loading"></div>')
+    .css('background-image', 'url("' + sound.waveform_url + '")')
+  ).fadeIn(300);
   $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
 
   new Sound(daw.get('search').results[$(ev.target).index()], function(sound) {
     daw.set({ sound: sound });
     $('.sound.loaded').removeClass('loaded').addClass('preview');
     $(this).removeClass('preview').addClass('loaded');
-    $('.track:first .waveform').removeClass('loading')
-    .imgAreaSelect({
+    $('.track:first .clip').removeClass('loading')
+    $('.track:first').imgAreaSelect({
       handles: true,
+      maxHeight: $('.track:first').height(),
+      minHeight: $('.track:first').height(),
       instance: true,
-      maxHeight: 280,
-      minHeight: 280,
       onSelectEnd: function(img, selection) {
-        var startTime = ((selection.x1 * sound.duration) / $('.track:first .waveform').width()) / 1000;
-        var endTime   = ((selection.x2 * sound.duration) / $('.track:first .waveform').width()) / 1000;
+        var startTime = ((selection.x1 * sound.duration) / $('.track:first').width()) / 1000;
+        var endTime   = ((selection.x2 * sound.duration) / $('.track:first').width()) / 1000;
         var track = _(daw.get('sequencer').get('tracks')).first();
         var clip = new Clip({ start: startTime, end: endTime, track: track, sound: sound});
         track.stop();
@@ -200,24 +205,24 @@ $('.sound').live('click', function(ev) {
 
 $('.track-control a').click(function(ev) {
   ev.preventDefault();
-  console.log(((daw.get('sequencer').get('tracks')[1].duration())))
   daw.get('sequencer').get('tracks')[1].play();
   $('.track:last .playhead')
     .css('-webkit-transition', 'none')
     .css('left', '0px')
-    .css('-webkit-transition', 'left ' + ((daw.get('sequencer').get('tracks')[1].duration() * $('.track:last').width()) / $('.track:first .waveform').width()) + 'ms linear')
+    .css('-webkit-transition', 'left ' + ((daw.get('sequencer').get('tracks')[1].duration() * $('.track:last').width()) / $('.track:first').width()) + 'ms linear')
     .css('left', $('.track:last').width() + 'px')
 });
 
 $(window).keydown(function(ev) {
   if (ev.keyCode == 13) {
     daw.get('sequencer').get('tracks')[1].push(daw.get('sequencer').get('tracks')[0].get('clips')[0]);
-    var selection = $('.track:first .waveform').imgAreaSelect({ instance: true }).getSelection(true);
+    var selection = $('.track:first').imgAreaSelect({ instance: true }).getSelection();
     $('.track:last').append(
       $('<div class="clip" draggable="true"></div>')
       .css('background-image', 'url("' + daw.get('sound').waveform_url + '")')
       .css('background-position', -selection.x1 + 'px ' + selection.y1 + 'px')
       .css('width', selection.width)
+      .css('background-size',  (($('.track:last').width() * 100)/selection.width) + '% 100%')
     );
   }
 })
