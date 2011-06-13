@@ -74,10 +74,9 @@ var router = bee.route({
           reqOptions = {
             host: reqOptions.host,
             path: reqOptions.pathname + '?client_id=gGt2hgm7KEj3b710HlJw',
-            method: 'HEAD'
           };
 
-          http.request(reqOptions, function(res) {
+          http.get(reqOptions, function(res) {
             if (!res.headers.location) {
               res.headers['Content-Length'] = 0;
               finalResponse.writeHead(404, { 'Content-Type': 'application/octet-stream' });
@@ -109,7 +108,6 @@ var router = bee.route({
           .on('error', function(err) {
             errorHandler(err, finalResponse);
           })
-          .end();
         })
       })
       .on('error', function(err) {

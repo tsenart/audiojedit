@@ -170,6 +170,7 @@ $('#soundmanager').mouseleave(function(ev) {
 // ev.stopPropagation();
 $('.sound').live('click', function(ev) {
   ev.preventDefault();
+  $('#soundmanager').trigger('mouseleave');
   // var index = JSON.parse(ev.originalEvent.dataTransfer.getData('application/json')).index;
   var index = $(this).index();
   var sound = daw.get('search').results[index];
@@ -177,7 +178,7 @@ $('.sound').live('click', function(ev) {
     $('<div class="clip loading"></div>')
     .css('background-image', 'url("' + sound.waveform_url + '")')
   ).fadeIn(300);
-  $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
+  $('.track-control:first').text(sound.user.username + ' - ' + sound.title + ' | ');
 
   new Sound(daw.get('search').results[$(ev.target).index()], function(sound) {
     daw.set({ sound: sound });
@@ -199,22 +200,36 @@ $('.sound').live('click', function(ev) {
         track.play();
       }
     });
-  })
+    $('.track-control:first').append($('<a href="#add" class="add">Add Clip</a>'));
+  }.bind(this))
   // return false;
 });
 
-$('.track-control a').click(function(ev) {
+$('.track-control a.play').click(function(ev) {
   ev.preventDefault();
-  daw.get('sequencer').get('tracks')[1].play();
   $('.track:last .playhead')
     .css('-webkit-transition', 'none')
-    .css('left', '0px')
-    .css('-webkit-transition', 'left ' + ((daw.get('sequencer').get('tracks')[1].duration() * $('.track:last').width()) / $('.track:first').width()) + 'ms linear')
-    .css('left', $('.track:last').width() + 'px')
+    .css('margin-left', 0)
+
+  daw.get('sequencer').get('tracks')[1].play();
+
+  var lastTrackWidth = 0;
+  $('.track:last .clip').each(function() {
+    lastTrackWidth += $(this).width();
+  });
+
+  $('.track:last .playhead')
+    .css('-webkit-transition', 'margin-left ' + daw.get('sequencer').get('tracks')[1].duration() + 's linear')
+    .css('margin-left', lastTrackWidth + 'px')
 });
 
-$(window).keydown(function(ev) {
-  if (ev.keyCode == 13) {
+$('.track-control a.add').live('click', function(e) {
+  e.preventDefault();
+  $(window).trigger('keydown', true)
+})
+
+$(window).keydown(function(ev, fake) {
+  if (ev.keyCode == 13 || fake) {
     daw.get('sequencer').get('tracks')[1].push(daw.get('sequencer').get('tracks')[0].get('clips')[0]);
     var selection = $('.track:first').imgAreaSelect({ instance: true }).getSelection();
     $('.track:last').append(
@@ -223,7 +238,7 @@ $(window).keydown(function(ev) {
       .css('background-position', -selection.x1 + 'px ' + selection.y1 + 'px')
       .css('width', selection.width)
       .css('background-size',  (($('.track:last').width() * 100)/selection.width) + '% 100%')
-    );
+    ).width();
   }
 })
 

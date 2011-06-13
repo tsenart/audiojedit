@@ -102,13 +102,14 @@ a:hover {
 }
 
 .track {
-  height: 150px;
+  height: 250px;
   background-image: -webkit-gradient(
     linear, left top, left bottom, from(rgba(50,50,50, 0.8)),
     to(rgba(80,80,80,0.2))
   );
   margin-bottom: 20px;
   -webkit-box-shadow: 0px 15px 50px 0px #333;
+  min-width: 100%;
 }
 
 .loading {
@@ -117,13 +118,12 @@ a:hover {
 }
 
 .playhead {
-  top: 0;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0, 0);
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0);
   float: left;
-  height: 100%;
-  border-right: 1px solid red;
-  width: 1px;
+  height: 250px;
+  border-right: 1px solid #000;
+  width: 0;
 }
 
 .track .clip {
