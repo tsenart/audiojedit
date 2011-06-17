@@ -212,7 +212,7 @@ $('.sound').live('click', function(ev) {
     $('<div class="clip loading"></div>')
     .css('background-image', 'url("' + sound.waveform_url + '")')
   ).fadeIn(300);
-  $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
+  $('.track-control:first').text(sound.user.username + ' - ' + sound.title + ' | ' + (sound.duration / 1000) + ' seconds');
 
   sourceTrack.reset();
   sourceTrack.set({
