@@ -1,15 +1,3 @@
-if ( !window.requestAnimationFrame ) {
-  window.requestAnimationFrame = ( function() {
-    return window.webkitRequestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.oRequestAnimationFrame ||
-    window.msRequestAnimationFrame ||
-    function( /* function FrameRequestCallback */ callback, /* DOMElement Element */ element ) {
-      window.setTimeout( callback, 1000 / 60 );
-    };
-  } )();
-}
-
 var SoundManager = Backbone.Model.extend({});
 var Editor = Backbone.Model.extend({
   defaults: {
@@ -95,11 +83,12 @@ var Track = Backbone.Model.extend({
         xhr.open('POST', SC.options.apiHost + '/tracks.json?oauth_token=' + token, true);
         xhr.onload = function(e) {
           alert('Uploaded! Hackerish stuff going on here.');
+          $('.track-control:last .upload').text('Upload');
         };
 
         xhr.onprogress = function(ev) {
           if(ev.lengthComputable) {
-            $('.track-control:last .upload').text('Uploaded ' + Number((ev.loaded / ev.total * 100))); // FIXME: STINKS
+            $('.track-control:last .upload').text('Uploaded ' + Number((ev.loaded / ev.total * 100)) + '%'); // FIXME: STINKS
           }
         }.bind(this);
 
