@@ -22,7 +22,7 @@ var Track = Backbone.Model.extend({
     clips: []
   },
 
-  play: function(delay, context) {
+  play: function(delay, pitch, context) {
     var clips = this.get('clips');
     if (clips.length == 0) return;
     else this.stop();
@@ -30,7 +30,7 @@ var Track = Backbone.Model.extend({
     var cue = -clips[0].get('duration') + (delay || 0);
     clips.forEach(function(clip) {
       cue += clip.get('duration');
-      clip.play(cue, context)
+      clip.play(cue, pitch, context)
     });
   },
 
@@ -46,11 +46,11 @@ var Track = Backbone.Model.extend({
     if (this.get('clips').length == 0)
       return 0;
     else
-      return _(this.get('clips')).chain().map(function(clip) {
+      return this.get('clips').map(function(clip) {
         return clip.get('duration');
       }).reduce(function(a, b) {
         return a + b;
-      }).value();
+      });
   },
 
   insert: function(clip, position) {
@@ -63,7 +63,8 @@ var Track = Backbone.Model.extend({
   },
 
   upload: function(cb) {
-    var offlineContext = new webkitAudioContext(2, this.duration() * 44100, 44100);
+    var pitch = $('.track-control:last .pitch').val() > 0 ? $('.track-control:last .pitch').val() : 0.01;
+    var offlineContext = new webkitAudioContext(2, (this.duration() / pitch) * 44100, 44100);
 
     offlineContext.oncomplete = function(event) {
       var data = PCMData.encode({
@@ -72,9 +73,6 @@ var Track = Backbone.Model.extend({
         bytesPerSample: 2,
         data: event.renderedBuffer.getChannelData()
       });
-
-      var player = new Audio('data:audio/x-wav;base64,' + btoa(data));
-      player.play();
 
       var token = soundManager.get('access_token');
       if (!token || token.length == 0) {
@@ -96,14 +94,21 @@ var Track = Backbone.Model.extend({
         formData.append('track[sharing]', 'public');
         xhr.open('POST', SC.options.apiHost + '/tracks.json?oauth_token=' + token, true);
         xhr.onload = function(e) {
-          alert('DONE!')
+          alert('Uploaded! Hackerish stuff going on here.');
         };
+
+        xhr.onprogress = function(ev) {
+          if(ev.lengthComputable) {
+            $('.track-control:last .upload').text('Uploaded ' + Number((ev.loaded / ev.total * 100))); // FIXME: STINKS
+          }
+        }.bind(this);
 
         xhr.send(formData);  // multipart/form-data
       }
     }.bind(this);
 
-    this.play(0, offlineContext);
+
+    this.play(0, pitch, offlineContext);
     offlineContext.startRendering();
   },
 
@@ -122,10 +127,11 @@ var Clip = Backbone.Model.extend({
     this.set(_.extend(attrs, { duration: attrs.end - attrs.start }));
   },
 
-  play: function(delay, context) {
+  play: function(delay, pitch, context) {
     var context   = context || new webkitAudioContext();
     var source    = context.createBufferSource();
     source.buffer = context.createBuffer(this.get('sound').buffer, false);
+    source.playbackRate.value = pitch || 1;
     source.connect(context.destination);
 
     // Issue 82722:  make envelope optional for AudioBufferSourceNode.noteGrainOn method in Web Audio API
@@ -136,9 +142,12 @@ var Clip = Backbone.Model.extend({
     return this.set({ source: source });
   },
 
-  stop: function(delay) {
+  stop: function(delay) { // FIXME: NOT WORKING
     var source = this.get('source');
-    return source && source.noteOff(delay || 0);
+    if (source) {
+      source.noteOff(delay || 0);
+      source.disconnect(0);
+    }
   }
 });
 
@@ -156,12 +165,6 @@ var Sound = Backbone.Model.extend({
       !!cb && cb(this.attributes);
     }.bind(this);
 
-    xhr.onprogress = function(ev) {
-      if(ev.lengthComputable) {
-        this.set({ loading: parseInt( (ev.loaded / ev.total * 100), 10) });
-      }
-    }.bind(this);
-
     xhr.send();
   }
 });
@@ -177,7 +180,15 @@ $('#search').keyup(function instantSearch(ev) {
   var $search = $(this);
   if ($search.val().length < 3) return;
   !!req && req.abort();
-  instantSearch.req = $.getJSON('http://api.soundcloud.com/tracks.json', { client_id: '1288146c708a6fa789f74748fe960337', q: $search.val(), limit: $('#soundmanager').width() / 110 | 0 })
+  instantSearch.req = $.getJSON('http://api.soundcloud.com/tracks.json', {
+    client_id: '1288146c708a6fa789f74748fe960337',
+    q: $search.val(),
+    limit: $('#soundmanager').width() / 110 | 0,
+    duration: {
+      from: 0,
+      to: 60000
+    }
+  })
   .success(function(data) {
     soundManager.set({ search: { value: $search.val(), results: data } });
     $('#sounds').html('');
@@ -203,6 +214,7 @@ $('.sound').live('click', function(ev) {
   ).fadeIn(300);
   $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
 
+  sourceTrack.reset();
   sourceTrack.set({
     sound: new Sound(sound, function(sound) {
       $('.sound.loaded').removeClass('loaded').addClass('preview');
@@ -218,39 +230,57 @@ $('.sound').live('click', function(ev) {
           var clip = new Clip({ start: startTime, end: endTime, sound: sound});
           sourceTrack.reset();
           sourceTrack.set({ clips: [ clip ] });
-          sourceTrack.play(0, onlineContext);
+          sourceTrack.play(0, 1, onlineContext);
         }
       });
     }.bind(this))
   });
 });
 
-$('.track-control a.play').click(function(ev) {
+$('.track-control input[type="range"]:first').dblclick(function(e) {
+  e.preventDefault();
+  $(this).val(1);
+});
+
+$('.track-control .play').live('click', function(ev) {
   ev.preventDefault();
   var resultTrack = editor.get('tracks')[1];
+  var pitch       = $('.track-control:last .pitch').val() > 0 ? $('.track-control:last .pitch').val() : 0.01;
   var duration    = resultTrack.duration();
+  var $playBtn     = $(this);
 
   if (resultTrack.isEmpty()) return;
 
-  var lastTrackWidth = 0;
-  $('.track:last .clip').each(function() {
-    lastTrackWidth += $(this).width();
-  });
+  if ($playBtn.hasClass('playing')) {
+    resultTrack.stop();
+    $('.track:last .playhead').trigger('webkitTransitionEnd');
+  }
+  else {
+    var lastTrackWidth = 0;
+    $('.track:last .clip').each(function() {
+      lastTrackWidth += $(this).width();
+    });
 
-  $('.track:last .playhead').show(function() {
-    $(this)
-      .css('-webkit-transition', 'width ' + duration + 's linear')
-      .css('width', lastTrackWidth + 'px')
-      .bind('webkitTransitionEnd', function() {
-        $(this).hide().css('width', 0);
-      })
-  })
+    $playBtn.addClass('playing');
+    console.log(duration / Number(pitch))
+    $('.track:last .playhead').show(function() {
+      $(this)
+        .css('-webkit-transition', 'width ' + duration + 's linear')
+        .css('width', lastTrackWidth + 'px')
+        .bind('webkitTransitionEnd', function() {
+          $(this).hide().css('width', 0);
+          $('.track-control:last button,input').removeAttr('disabled');
+          $playBtn.removeClass('playing')
+        })
+    })
 
+    $('.track-control:last button,input').not($playBtn).attr('disabled', true);
 
-  resultTrack.play(0, onlineContext);
+    resultTrack.play(0, pitch, onlineContext);
+  }
 });
 
-$('.track-control a.reset').click(function(e) {
+$('.track-control .reset').click(function(e) {
   e.preventDefault();
   var resultTrack = editor.get('tracks')[1];
   resultTrack.reset();
@@ -259,7 +289,7 @@ $('.track-control a.reset').click(function(e) {
   $('.track:last .clip').remove();
 })
 
-$('.track-control a.upload').click(function(e) {
+$('.track-control .upload').click(function(e) {
   e.preventDefault();
   SC.options['site']    = 'soundcloud.com';
   SC.options['apiHost'] = 'https://api.soundcloud.com';
@@ -277,10 +307,12 @@ $('.track-control a.upload').click(function(e) {
 
 $(window).keydown(function(ev) {
   if (ev.keyCode == 13) {
+    var selection = $('.track:first').imgAreaSelect({ instance: true }).getSelection();
+    if (!selection || selection.width == 0) return;
+
     var sourceTrack = editor.get('tracks')[0];
     var resultTrack = editor.get('tracks')[1];
     resultTrack.insert(sourceTrack.get('clips')[0]);
-    var selection = $('.track:first').imgAreaSelect({ instance: true }).getSelection();
     $('.track:last').append(
       $('<div class="clip" draggable="true"></div>')
       .css('background-image', 'url("' + sourceTrack.get('sound').attributes.waveform_url + '")')
@@ -303,7 +335,7 @@ $('.sound').live('mouseleave', function(ev) {
 
 $(window).resize(function(e) {
   $('#editor').css('height', $(window).height() - 275 | 0);
-  $('.track').css('height', $('#editor').height() / 2.1 | 0)
+  $('.track').css('height', $('#editor').height() / 2.1 | 0);
 })
 
 $(window).trigger('resize');

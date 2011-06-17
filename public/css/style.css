@@ -103,6 +103,14 @@ a:hover {
   background-color: rgba(87, 87, 87, 1);
 }
 
+button.play::before {
+  content: "Play";
+}
+
+button.play.playing::before {
+  content: "Stop";
+}
+
 .track {
   position: relative;
   background-image: -webkit-gradient(
