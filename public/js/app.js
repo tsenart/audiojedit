@@ -265,7 +265,7 @@ $('.track-control a.upload').click(function(e) {
   SC.options['apiHost'] = 'https://api.soundcloud.com';
   SC.connect({
     client_id:    "1288146c708a6fa789f74748fe960337",
-    redirect_uri: "http://localhost:8181/public/soundcloud-callback.html",
+    redirect_uri: "http://audiojedit.nodester.com/public/soundcloud-callback.html",
     connected: function() {
       soundManager.set({ access_token: SC.options.access_token });
       var resultTrack = editor.get('tracks')[1];
