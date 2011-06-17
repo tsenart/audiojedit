@@ -6,6 +6,7 @@ body {
   text-shadow: 0px 1px 1px #aaa;
   background-color: #fefefe;
   width: 100%;
+  height: 100%;
 }
 
 a, a:visited {
@@ -26,21 +27,25 @@ a:hover {
 }
 
 #daw {
-  width: 100%;
   margin: 0 auto;
+  width: 100%;
+  height: auto !important; /* real browsers */
+  height:100%; /* IE6: treaded as min-height*/
+  min-height:100%; /* real browsers */
 }
 
 #soundmanager {
-  position: absolute;
-  background-color: #fefefe;
+  background-image: -webkit-gradient(
+    linear, left top, left bottom, from(rgba(50,50,50, 0.8)),
+    to(rgba(80,80,80,0.2))
+  );
   -webkit-border-bottom-left-radius: 15px;
   -webkit-border-bottom-right-radius: 15px;
   -webkit-box-shadow: 0 10px 15px #222;
   overflow: hidden;
-  min-height: 50px;
-  width: 100%;
-  top: -45px;
-  z-index: 999999;
+  min-height: 70px;
+  width: 99%;
+  margin: 0 auto;
 }
 
 #search {
@@ -55,10 +60,16 @@ a:hover {
 
 #sound-info {
   height: 40px;
-  color: #0e0e0e;
   font-size: 20px;
   margin-left: 10px;
   width: 80%;
+}
+
+#sc-connect {
+  display: none;
+  float: right;
+  cursor: pointer;
+  margin: 25px 25px 0 5px;
 }
 
 #sounds {
@@ -69,27 +80,18 @@ a:hover {
   height: 100px;
   width: 100px;
   cursor: pointer;
-  margin: 0px 10px 8px 0px;
+  margin: 0px 6px 9px 0px;
   border: 1px solid #888;
   -webkit-border-radius: 15px;
-  opacity: 0.65;
-  -webkit-transition: opacity 0.3s ease-in-out;
   float: left;
   -webkit-user-select: none;
 }
 
-.sound.preview:hover {
-  opacity: 1;
-  -webkit-transition: opacity 0.3s ease-in-out;
-}
-
-.sound.loaded {
-  opacity: 1;
-  -webkit-transition: opacity 0.3s ease-in-out;
-}
-
-#sequencer {
+#editor {
+  margin: 0 auto;
   margin-top: 25px;
+  height: 75%;
+  width: 99%;
 }
 
 .track-control {
@@ -102,26 +104,32 @@ a:hover {
 }
 
 .track {
-  height: 250px;
+  position: relative;
   background-image: -webkit-gradient(
     linear, left top, left bottom, from(rgba(50,50,50, 0.8)),
     to(rgba(80,80,80,0.2))
   );
+  opacity: 1;
+  -webkit-transition: opacity 1s ease-in-out;
   margin-bottom: 20px;
+  -webkit-border-bottom-left-radius: 15px;
+  -webkit-border-bottom-right-radius: 15px;
   -webkit-box-shadow: 0px 15px 50px 0px #333;
-  min-width: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 .loading {
-  opacity: 0.65;
-  -webkit-transition: opacity 0.4s ease-in-out;
+  opacity: 0.2;
+  -webkit-transition: opacity 1s ease-in-out;
 }
 
 .playhead {
   position: absolute;
+  display: none;
   background-color: rgba(0, 0, 0, 0);
   float: left;
-  height: 250px;
+  height: 100%;
   border-right: 1px solid #000;
   width: 0;
 }

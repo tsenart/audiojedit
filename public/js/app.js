@@ -1,47 +1,28 @@
-var Daw = Backbone.Model.extend({
-  initialize: function(attrs) {
-    if ('sequencer' in attrs)
-      attrs.sequencer.set({ daw: this });
-    this.set(attrs);
+if ( !window.requestAnimationFrame ) {
+  window.requestAnimationFrame = ( function() {
+    return window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.oRequestAnimationFrame ||
+    window.msRequestAnimationFrame ||
+    function( /* function FrameRequestCallback */ callback, /* DOMElement Element */ element ) {
+      window.setTimeout( callback, 1000 / 60 );
+    };
+  } )();
+}
+
+var SoundManager = Backbone.Model.extend({});
+var Editor = Backbone.Model.extend({
+  defaults: {
+    onlineContext: new webkitAudioContext()
   }
-});
-
-var Sequencer = Backbone.Model.extend({
-  initialize: function(attrs) {
-    if ('tracks' in attrs)
-      _.each(attrs.tracks, function(track) {
-        track.set({ sequencer: this });
-      }.bind(this));
-    this.set(attrs);
-    this.context = new webkitAudioContext();
-  },
-
-  play: function() {
-    this.get('tracks').forEach(function(track) {
-      track.play() // Timer wroooooooooong!
-    });
-  },
-
-  stop: function() {
-    this.get('tracks').forEach(function(track) {
-      track.stop() // Timer wroooooooooong!
-    });
-  }
-
 });
 
 var Track = Backbone.Model.extend({
-  initialize: function(attrs) {
-    if ('clips' in attrs)
-      _.each(attrs.clips, function(clip) {
-        clip.set({ track: this });
-      }.bind(this));
-    else
-      attrs.clips = [];
-    this.set(attrs);
+  defaults: {
+    clips: []
   },
 
-  play: function(delay) {
+  play: function(delay, context) {
     var clips = this.get('clips');
     if (clips.length == 0) return;
     else this.stop();
@@ -49,7 +30,7 @@ var Track = Backbone.Model.extend({
     var cue = -clips[0].get('duration') + (delay || 0);
     clips.forEach(function(clip) {
       cue += clip.get('duration');
-      clip.play(cue)
+      clip.play(cue, context)
     });
   },
 
@@ -62,15 +43,77 @@ var Track = Backbone.Model.extend({
   },
 
   duration: function() {
-    return _(this.get('clips')).chain().map(function(clip) {
-      return clip.get('duration');
-    }).reduce(function(a, b) {
-      return a + b;
-    }).value();
+    if (this.get('clips').length == 0)
+      return 0;
+    else
+      return _(this.get('clips')).chain().map(function(clip) {
+        return clip.get('duration');
+      }).reduce(function(a, b) {
+        return a + b;
+      }).value();
   },
 
-  push: function(clip) {
-    this.get('clips').push(clip);
+  insert: function(clip, position) {
+    var clips = this.get('clips');
+    var position = position || clips.length - 1;
+    var changedClips = clips.slice(0, position);
+    changedClips.push(clip, clips.slice(position, clips.length));
+    changedClips = _.flatten(changedClips);
+    this.set({ clips: changedClips });
+  },
+
+  upload: function(cb) {
+    var offlineContext = new webkitAudioContext(2, this.duration() * 44100, 44100);
+
+    offlineContext.oncomplete = function(event) {
+      var data = PCMData.encode({
+        sampleRate: event.renderedBuffer.sampleRate,
+        channelCount: 1,
+        bytesPerSample: 2,
+        data: event.renderedBuffer.getChannelData()
+      });
+
+      var player = new Audio('data:audio/x-wav;base64,' + btoa(data));
+      player.play();
+
+      var token = soundManager.get('access_token');
+      if (!token || token.length == 0) {
+        delete offlineContext;
+        return;
+      }
+      else {
+        var xhr = new XMLHttpRequest();
+        var formData = new FormData();
+        function byteValue(x) {
+          return x.charCodeAt(0) & 0xff;
+        }
+        var ords = Array.prototype.map.call(data, byteValue);
+        var ui8a = new Uint8Array(ords);
+        var bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
+        bb.append(ui8a.buffer);
+        formData.append('track[asset_data]', bb.getBlob());
+        formData.append('track[title]', editor.get('tracks')[0].get('sound').attributes.title + ' Jedi Remix!');
+        formData.append('track[sharing]', 'public');
+        xhr.open('POST', SC.options.apiHost + '/tracks.json?oauth_token=' + token, true);
+        xhr.onload = function(e) {
+          alert('DONE!')
+        };
+
+        xhr.send(formData);  // multipart/form-data
+      }
+    }.bind(this);
+
+    this.play(0, offlineContext);
+    offlineContext.startRendering();
+  },
+
+  reset: function() {
+    this.stop();
+    this.set({ clips: [] });
+  },
+
+  isEmpty: function() {
+    return this.get('clips').length == 0;
   }
 });
 
@@ -79,21 +122,17 @@ var Clip = Backbone.Model.extend({
     this.set(_.extend(attrs, { duration: attrs.end - attrs.start }));
   },
 
-  play: function(delay) {
-    var track = this.get('track');
-    if (!track) {
-      console.log('Clip has no Track.')
-      return;
-    }
+  play: function(delay, context) {
+    var context   = context || new webkitAudioContext();
+    var source    = context.createBufferSource();
+    source.buffer = context.createBuffer(this.get('sound').buffer, false);
+    source.connect(context.destination);
 
-    var sequencer = track.get('sequencer');
-    var source = sequencer.context.createBufferSource();
-    source.buffer = sequencer.context.createBuffer(this.get('sound').buffer, false);
-    source.connect(sequencer.context.destination);
     // Issue 82722:  make envelope optional for AudioBufferSourceNode.noteGrainOn method in Web Audio API
     // http://code.google.com/p/chromium/issues/detail?id=82722
     // We don't want fading on this method.
-    source.noteGrainOn(sequencer.context.currentTime + (delay || 0), this.get('start'), this.get('duration'));
+    source.noteGrainOn(context.currentTime + (delay || 0), this.get('start'), this.get('duration'));
+    // source.noteOff(context.currentTime + (delay || 0) + this.get('duration'));
     return this.set({ source: source });
   },
 
@@ -110,28 +149,37 @@ var Sound = Backbone.Model.extend({
     xhr.open('GET', [document.location.origin, attrs.user.permalink, attrs.permalink, 'audio'].join('/'), true);
     xhr.responseType = 'arraybuffer';
     xhr.overrideMimeType('text/plain; charset=x-user-defined');
+
     xhr.onload = function() {
       if (xhr.readyState != 4) return;
       this.set({ buffer: xhr.response });
       !!cb && cb(this.attributes);
     }.bind(this);
+
+    xhr.onprogress = function(ev) {
+      if(ev.lengthComputable) {
+        this.set({ loading: parseInt( (ev.loaded / ev.total * 100), 10) });
+      }
+    }.bind(this);
+
     xhr.send();
   }
 });
 
-var daw = new Daw({
-  sequencer: new Sequencer({
-    tracks: [ new Track, new Track ]
-  })
+var onlineContext  = new webkitAudioContext();
+var soundManager = new SoundManager();
+var editor = new Editor({
+  tracks: [ new Track, new Track ]
 });
 
-$('#search').keyup(function(ev) {
+$('#search').keyup(function instantSearch(ev) {
+  var req = instantSearch.req;
   var $search = $(this);
   if ($search.val().length < 3) return;
-  $('#sounds').addClass('searching');
-  $.getJSON('http://api.soundcloud.com/tracks.json', { client_id: 'gGt2hgm7KEj3b710HlJw', q: $search.val(), limit: 11 })
+  !!req && req.abort();
+  instantSearch.req = $.getJSON('http://api.soundcloud.com/tracks.json', { client_id: '1288146c708a6fa789f74748fe960337', q: $search.val(), limit: $('#soundmanager').width() / 110 | 0 })
   .success(function(data) {
-    daw.set({ search: { value: $search.val(), results: data } });
+    soundManager.set({ search: { value: $search.val(), results: data } });
     $('#sounds').html('');
     _.each(data, function(sound) {
       $('<div class="sound preview"></div>')
@@ -139,120 +187,123 @@ $('#search').keyup(function(ev) {
         .css('background-image', 'url("' + (sound.artwork_url || sound.user.avatar_url) + '")')
         .appendTo('#sounds');
     });
-
-    // $('.sound')
-    // .bind('dragstart', function(ev) {
-    //   var ev = ev.originalEvent;
-    //   $('#soundmanager').trigger('mouseleave');
-    //   $(this).css('z-index', 9999);
-    //   ev.dataTransfer.effectAllowed = 'move';
-    //   ev.dataTransfer.setData('application/json', JSON.stringify({ index: $(this).index() }));
-    // })
-  });
+  })
 });
 
-
-$('#soundmanager').mouseenter(function(ev) {
-  $(this).stop().animate({ top: 0 }, 500)
-});
-
-$('#soundmanager').mouseleave(function(ev) {
-  $(this).stop().animate({ top: -$(this).height() + 15 }, 500);
-});
-
-// document.querySelector('body').addEventListener('dragover', function(e) {
-//   alert('YAY');
-//   e.dataTransfer.dropEffect = 'copy';
-//   return false;
-// }, true);
-
-// document.querySelector('.track').addEventListener('drop', function(ev) {
-// ev.stopPropagation();
 $('.sound').live('click', function(ev) {
   ev.preventDefault();
-  $('#soundmanager').trigger('mouseleave');
-  // var index = JSON.parse(ev.originalEvent.dataTransfer.getData('application/json')).index;
-  var index = $(this).index();
-  var sound = daw.get('search').results[index];
-  $('.track:first').html(
+  var sound = soundManager.get('search').results[$(this).index()];
+  var sourceTrack = editor.get('tracks')[0];
+  var resultTrack = editor.get('tracks')[1];
+  $('.track-control:last .reset').trigger('click');
+
+  $('.track.source').html(
     $('<div class="clip loading"></div>')
     .css('background-image', 'url("' + sound.waveform_url + '")')
   ).fadeIn(300);
-  $('.track-control:first').text(sound.user.username + ' - ' + sound.title + ' | ');
+  $('.track-control:first').text(sound.user.username + ' - ' + sound.title);
 
-  new Sound(daw.get('search').results[$(ev.target).index()], function(sound) {
-    daw.set({ sound: sound });
-    $('.sound.loaded').removeClass('loaded').addClass('preview');
-    $(this).removeClass('preview').addClass('loaded');
-    $('.track:first .clip').removeClass('loading')
-    $('.track:first').imgAreaSelect({
-      handles: true,
-      maxHeight: $('.track:first').height(),
-      minHeight: $('.track:first').height(),
-      instance: true,
-      onSelectEnd: function(img, selection) {
-        var startTime = ((selection.x1 * sound.duration) / $('.track:first').width()) / 1000;
-        var endTime   = ((selection.x2 * sound.duration) / $('.track:first').width()) / 1000;
-        var track = _(daw.get('sequencer').get('tracks')).first();
-        var clip = new Clip({ start: startTime, end: endTime, track: track, sound: sound});
-        track.stop();
-        track.set({ clips: [ clip ] });
-        track.play();
-      }
-    });
-    $('.track-control:first').append($('<a href="#add" class="add">Add Clip</a>'));
-  }.bind(this))
-  // return false;
+  sourceTrack.set({
+    sound: new Sound(sound, function(sound) {
+      $('.sound.loaded').removeClass('loaded').addClass('preview');
+      $(this).removeClass('preview').addClass('loaded');
+      $('.track:first .clip').removeClass('loading');
+      $('.track:first').imgAreaSelect({
+        handles: true,
+        instance: true,
+        minHeight: $('.track:first').height(),
+        onSelectEnd: function(img, selection) {
+          var startTime = ((selection.x1 * sound.duration) / $('.track:first').width()) / 1000;
+          var endTime   = ((selection.x2 * sound.duration) / $('.track:first').width()) / 1000;
+          var clip = new Clip({ start: startTime, end: endTime, sound: sound});
+          sourceTrack.reset();
+          sourceTrack.set({ clips: [ clip ] });
+          sourceTrack.play(0, onlineContext);
+        }
+      });
+    }.bind(this))
+  });
 });
 
 $('.track-control a.play').click(function(ev) {
   ev.preventDefault();
-  $('.track:last .playhead')
-    .css('-webkit-transition', 'none')
-    .css('margin-left', 0)
+  var resultTrack = editor.get('tracks')[1];
+  var duration    = resultTrack.duration();
 
-  daw.get('sequencer').get('tracks')[1].play();
+  if (resultTrack.isEmpty()) return;
 
   var lastTrackWidth = 0;
   $('.track:last .clip').each(function() {
     lastTrackWidth += $(this).width();
   });
 
-  $('.track:last .playhead')
-    .css('-webkit-transition', 'margin-left ' + daw.get('sequencer').get('tracks')[1].duration() + 's linear')
-    .css('margin-left', lastTrackWidth + 'px')
+  $('.track:last .playhead').show(function() {
+    $(this)
+      .css('-webkit-transition', 'width ' + duration + 's linear')
+      .css('width', lastTrackWidth + 'px')
+      .bind('webkitTransitionEnd', function() {
+        $(this).hide().css('width', 0);
+      })
+  })
+
+
+  resultTrack.play(0, onlineContext);
 });
 
-$('.track-control a.add').live('click', function(e) {
+$('.track-control a.reset').click(function(e) {
   e.preventDefault();
-  $(window).trigger('keydown', true)
+  var resultTrack = editor.get('tracks')[1];
+  resultTrack.reset();
+
+  // FIXME: DO THE BACKBONE VIEW CODE FOR GOD SAKE!
+  $('.track:last .clip').remove();
 })
 
-$(window).keydown(function(ev, fake) {
-  if (ev.keyCode == 13 || fake) {
-    daw.get('sequencer').get('tracks')[1].push(daw.get('sequencer').get('tracks')[0].get('clips')[0]);
+$('.track-control a.upload').click(function(e) {
+  e.preventDefault();
+  SC.options['site']    = 'soundcloud.com';
+  SC.options['apiHost'] = 'https://api.soundcloud.com';
+  SC.connect({
+    client_id:    "1288146c708a6fa789f74748fe960337",
+    redirect_uri: "http://localhost:8181/public/soundcloud-callback.html",
+    connected: function() {
+      soundManager.set({ access_token: SC.options.access_token });
+      var resultTrack = editor.get('tracks')[1];
+      resultTrack.upload();
+    }
+  });
+});
+
+
+$(window).keydown(function(ev) {
+  if (ev.keyCode == 13) {
+    var sourceTrack = editor.get('tracks')[0];
+    var resultTrack = editor.get('tracks')[1];
+    resultTrack.insert(sourceTrack.get('clips')[0]);
     var selection = $('.track:first').imgAreaSelect({ instance: true }).getSelection();
     $('.track:last').append(
       $('<div class="clip" draggable="true"></div>')
-      .css('background-image', 'url("' + daw.get('sound').waveform_url + '")')
+      .css('background-image', 'url("' + sourceTrack.get('sound').attributes.waveform_url + '")')
       .css('background-position', -selection.x1 + 'px ' + selection.y1 + 'px')
       .css('width', selection.width)
-      .css('background-size',  (($('.track:last').width() * 100)/selection.width) + '% 100%')
-    ).width();
+      .css('background-size',  (($('.track:last').width() * 100) / selection.width) + '% 100%')
+    );
   }
 })
 
 $('.sound').live('mouseenter', function(ev) {
-  var sound = daw.get('search').results[$(ev.target).index()];
+  var sound = soundManager.get('search').results[$(this).index()];
   !!sound && $('#sound-info').text(sound.user.username + ' - ' + sound.title);
 })
 
 $('.sound').live('mouseleave', function(ev) {
-  var sound = daw.get('sound');
-  !!sound && $('#sound-info').text(sound.user.username + ' - ' + sound.title);
+  var sound = editor.get('tracks')[0].get('sound');
+  $('#sound-info').text(!!sound ? sound.attributes.user.username + ' - ' + sound.attributes.title : '');
 })
 
-$(window).resize(function() {
-  $('#soundmanager').css('top', -$('#soundmanager').height() + 15 );
+$(window).resize(function(e) {
+  $('#editor').css('height', $(window).height() - 275 | 0);
+  $('.track').css('height', $('#editor').height() / 2.1 | 0)
 })
 
+$(window).trigger('resize');

@@ -2,8 +2,8 @@ var
   url = require('url'),
   fs = require('fs'),
   http = require('http'),
-  bee = require('beeline');
-
+  bee = require('beeline'),
+  SC_CLIENT_ID = '1288146c708a6fa789f74748fe960337';
 
 var errorHandler = function(err, res) {
   console.log(err);
@@ -15,7 +15,7 @@ var scResolve = function(resource, finalResponse, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
     port: 80,
-    path: '/resolve.json?client_id=gGt2hgm7KEj3b710HlJw&url=http://soundcloud.com/' + resource,
+    path: '/resolve.json?client_id=' + SC_CLIENT_ID + '&url=http://soundcloud.com/' + resource,
     method: 'HEAD'
   };
 
@@ -36,10 +36,11 @@ var scResolve = function(resource, finalResponse, callback) {
 
 var router = bee.route({
 
-  'r`^/public/(.*)$`': bee.staticDir('./public/', {
+  'r`^/public/(.*)`': bee.staticDir('./public/', {
     '.html': 'text/html',
     '.css': 'text/css',
     '.gif': 'image/gif',
+    '.png': 'image/png',
     '.js': 'text/javascript'
   }),
 
@@ -73,7 +74,7 @@ var router = bee.route({
           reqOptions = url.parse(track.stream_url);
           reqOptions = {
             host: reqOptions.host,
-            path: reqOptions.pathname + '?client_id=gGt2hgm7KEj3b710HlJw',
+            path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
           };
 
           http.get(reqOptions, function(res) {

@@ -10,40 +10,44 @@
   <div id="daw">
     <div id="soundmanager">
       <input id="search" type="text" placeholder="Search on SoundCloud...">
+      <img id="sc-connect" src="/public/btn-connect-sc.png" alt="Connect with SoundCloud">
       <span id="sound-info"></span>
       <div id="sounds">
       </div>
     </div>
-    <div id="sequencer">
+    <div id="editor">
       <div class="track-control">
         Source
       </div>
-      <div class="track">
+      <div class="track source">
       </div>
       <div class="track-control">
-        Sequencer | <a class="play" href="#play">Play</a>
+        Result | <a class="play" href="#play">Play</a> | <a class="reset" href="#reset">Reset</a> | <a class="upload" href="#upload">Upload</a>
       </div>
-      <div class="track">
+      <div class="track result">
         <div class="playhead"></div>
       </div>
     </div>
   </div>
   <script src="/public/js/jquery.js"></script>
   <script src="/public/js/jquery.imgareaselect.min.js"></script>
+  <script src="/public/js/binarystream.js"></script>
+  <script src="/public/js/pcmdata.js"></script>
   <!-- <script src="/public/js/jquery-ui.js"></script>-->
   <script src="/public/js/underscore.js"></script>
   <script src="/public/js/backbone.js"></script>
+  <script src="/public/js/sc-connect.js"></script>
   <script src="/public/js/app.js"></script>
   <script>
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-23859381-1']);
-    _gaq.push(['_trackPageview']);
+    //var _gaq = _gaq || [];
+    //_gaq.push(['_setAccount', 'UA-23859381-1']);
+    //_gaq.push(['_trackPageview']);
 
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
+    //(function() {
+     // var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+     // ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+     // var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    //})();
   </script>
 </body>
 </html>
