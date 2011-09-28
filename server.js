@@ -155,5 +155,5 @@ var router = bee.route({
   }
 });
 
-http.createServer(router).listen(process.env['app_port'] || 8181);
+http.createServer(router).listen(process.env.PORT || 8181);
 

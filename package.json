@@ -1,0 +1,7 @@
+{
+  "name": "audiojedit",
+  "version": "0.0.1",
+  "dependencies": {
+    "beeline": "0.1.6"
+  }
+}
