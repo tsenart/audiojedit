@@ -19,6 +19,7 @@ var WebAudio = {
         cb && cb(buffer);
       });
     }.bind(this);
+
     xhr.send();
   },
   createSound: function(buffer) {
@@ -61,14 +62,15 @@ var Clip = {
 var Animation = {
   update: function(initialTime, duration, renderer, ender) {
     var currentTime = WebAudio.context.currentTime - initialTime,
-        progress = currentTime / duration;
+        currentDuration = duration(),
+        progress = currentTime / currentDuration;
 
-    if (currentTime <= duration && renderer) {
+    if (currentTime <= currentDuration && renderer) {
       renderer(progress);
       webkitRequestAnimationFrame(function() {
         this.update(initialTime, duration, renderer, ender);
       }.bind(this));
-    } else if (currentTime > duration && ender) {
+    } else if (currentTime > currentDuration && ender) {
       ender();
     }
   }
@@ -169,18 +171,16 @@ var SoundRenderering = {
     this.play();
     WebAudio.context.startRendering();
   },
-  play: function() {
-    var cue = -Sounds.result.clips[0].duration,
-        duration = Sounds.result.clips.map(function(clip) {
-          return clip.duration;
-        }).reduce(function(a, b) {
-          return a + b;
-        });
-
+  stop: function() {
     Sounds.result.sources.reverse().forEach(function(source) {
       WebAudio.stopSound(source);
     });
     Sounds.result.sources = [];
+  },
+  play: function() {
+    var cue = -Sounds.result.clips[0].duration;
+
+    this.stop();
 
     Sounds.result.clips.forEach(function(clip, i, clips) {
       cue += clips[i ? i - 1 : i].duration;
@@ -188,7 +188,13 @@ var SoundRenderering = {
       WebAudio.playSound(Sounds.result.sources[ Sounds.result.sources.length - 1 ], cue, clip.startTime, clip.duration);
     });
 
-    Animation.update(WebAudio.context.currentTime, duration, function(progress) {
+    Animation.update(WebAudio.context.currentTime, function() {
+      return Sounds.result.sources.length ? Sounds.result.clips.map(function(clip) {
+        return clip.duration;
+      }).reduce(function(a, b) {
+        return a + b;
+      }) : 0;
+    }, function(progress) {
       $('.track.result').find('.playhead').width((progress * 100).toFixed(3) + '%');
     }, function() {
       $('.track.result').find('.playhead').width(0);
@@ -245,28 +251,28 @@ $(window).bind('hashchange load', function() {
 
     $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
 
-    var nClips = $('.clip').length || 1,
-        waveformWidth = $('.track.source').width(),
-        waveformHeight = $('.track.source').height();
-
-    $('.track.source').append(Clip.createUI(sound.waveform_url)).addClass('loaded');
+    $('.track.source').append(Clip.createUI(sound.waveform_url));
 
     WebAudio.loadSound(soundUrl + '/audio', function(buffer) {
       Sounds.source.buffer = buffer;
+      var waveformHeight = $('.track.source').height();
 
-      $('.track.source').imgAreaSelect({
+      $('.track.source').addClass('loaded').imgAreaSelect({
         handles: true,
         instance: true,
         minHeight: waveformHeight,
         onSelectEnd: function(img, selection) {
           if (!selection.width) return false;
 
-          var clip = Clip.create(selection, waveformWidth, Sounds.source.duration);
+          var waveformWidth = $('.track.source').width(),
+              clip = Clip.create(selection, waveformWidth, Sounds.source.duration);
 
           WebAudio.source && WebAudio.stopSound(WebAudio.source, 0);
           WebAudio.source = WebAudio.createSound(Sounds.source.buffer);
           WebAudio.playSound(WebAudio.source, 0, clip.startTime, clip.duration);
-          Animation.update(WebAudio.context.currentTime, clip.duration, function(progress) {
+          Animation.update(WebAudio.context.currentTime, function() {
+            return clip.duration;
+          }, function(progress) {
             $('.track.source').find('.playhead').css('left', selection.x1).width(progress * selection.width | 0);
           }, function() {
             var selectionWidth = $('.track.source').imgAreaSelect({ instance: true }).getSelection().width;
@@ -329,6 +335,9 @@ $(window).bind('hashchange load', function() {
       };
 
       $('.track.result').width(0).find('.clip').remove();
+    },
+    83: function() { // s - Stop playing result
+      SoundRenderering.stop();
     }
   };
 
