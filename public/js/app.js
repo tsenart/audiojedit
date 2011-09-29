@@ -190,7 +190,7 @@ var Uploading = {
     // var ui8a = new Uint8Array(ords);
     // var bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
       // bb.append(ui8a.buffer);
-    formData.append('track[asset_data]', data);//bb.getBlob());
+    formData.append('track[asset_data]', data.buffer);//bb.getBlob());
     formData.append('track[title]', Sounds.source.title + ' Jedi Remix!');
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'http://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
