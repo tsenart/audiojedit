@@ -160,47 +160,76 @@ Wav.createWaveFileData = (function() {
 
 var SoundRenderering = {
   create: function(duration, cb) {
-    WebAudio.context = new webkitAudioContext(2, Math.ceil(duration) * 44100, 44100);
+    WebAudio.context = new webkitAudioContext(2, duration * 44100, 44100);
     WebAudio.context.oncomplete = function(event) {
       var data = Wav.createWaveFileData(event.renderedBuffer);
       WebAudio.context = new webkitAudioContext();
       cb && cb(data);
     };
-    $(window).trigger('keydown', { keyCode: 32 }); // Hacky
+    this.play();
     WebAudio.context.startRendering();
+  },
+  play: function() {
+    var cue = -Sounds.result.clips[0].duration,
+        duration = Sounds.result.clips.map(function(clip) {
+          return clip.duration;
+        }).reduce(function(a, b) {
+          return a + b;
+        });
+
+    Sounds.result.sources.reverse().forEach(function(source) {
+      WebAudio.stopSound(source);
+    });
+    Sounds.result.sources = [];
+
+    Sounds.result.clips.forEach(function(clip, i, clips) {
+      cue += clips[i ? i - 1 : i].duration;
+      Sounds.result.sources.push(WebAudio.createSound(Sounds.source.buffer));
+      WebAudio.playSound(Sounds.result.sources[ Sounds.result.sources.length - 1 ], cue, clip.startTime, clip.duration);
+    });
+
+    Animation.update(WebAudio.context.currentTime, duration, function(progress) {
+      $('.track.result').find('.playhead').width((progress * 100).toFixed(3) + '%');
+    }, function() {
+      $('.track.result').find('.playhead').width(0);
+    });
   }
 };
 
 var Uploading = {
   create: function(data) {
-    var token = localStorage['access_token'];
+    var token = localStorage['access_token'] //|| '1-9330-522011-d7aec0c537d947e121';
 
     if (!token || token.length == 0) {
-      delete offlineContext;
-      alert('Please connect to SoundCloud first');
+      alert('Please connect to SoundCloud first. Press C');
       return;
     }
 
-    var xhr = new XMLHttpRequest(),
+    var title = $('#sound-title').html(),
+        xhr = new XMLHttpRequest(),
         formData = new FormData(),
-        bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
+        bb = new (window.BlobBuilder || window.WebKitBlobBuilder)()
+
     bb.append(data.buffer);
     formData.append('track[asset_data]', bb.getBlob('audio/x-wav'));
     formData.append('track[title]', Sounds.source.title + ' Jedi Remix!');
     formData.append('track[sharing]', 'public');
-    xhr.open('POST', 'http://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
+    xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
-      alert('Uploaded!');
-      $('.track.result').removeClass('uploading');
+      $('#sound-title').html(title);
+      $('.track.result').removeClass('uploading').find('.playhead').width(0);
     };
 
     xhr.onprogress = function(ev) {
       if(ev.lengthComputable) {
-        $('.track.result').find('.playhead').width((ev.loaded / ev.total * 100) + '%');
+        var progress = (ev.loaded / ev.total) * 100;
+        $('#sound-title').html('Uploading ' + progress + '%');
+        $('.track.result').find('.playhead').width(progress + '%');
       }
     };
 
     $('.track.result').addClass('uploading');
+
     xhr.send(formData);
   }
 };
@@ -266,40 +295,24 @@ $(window).bind('hashchange load', function() {
       Sounds.result.clips.push(clip);
     },
     32: function() { // Space
-      var cue = -Sounds.result.clips[0].duration,
-          duration = Sounds.result.clips.map(function(clip) {
-            return clip.duration;
-          }).reduce(function(a, b) {
-            return a + b;
-          });
-
-      Sounds.result.sources.reverse().forEach(function(source) {
-        WebAudio.stopSound(source);
-      });
-      Sounds.result.sources = [];
-
-      Sounds.result.clips.forEach(function(clip, i, clips) {
-        cue += clips[i ? i - 1 : i].duration;
-        Sounds.result.sources.push(WebAudio.createSound(Sounds.source.buffer));
-        WebAudio.playSound(Sounds.result.sources[ Sounds.result.sources.length - 1 ], cue, clip.startTime, clip.duration);
-      });
-
-      Animation.update(WebAudio.context.currentTime, duration, function(progress) {
-        $('.track.result').find('.playhead').width((progress * 100).toFixed(3) + '%');
-      }, function() {
-        $('.track.result').find('.playhead').width(0);
-      });
+      SoundRenderering.play();
     },
     67: function() { // c - Connect with SoundCloud
       SC.connect({
-        client_id:    "1288146c708a6fa789f74748fe960337",
-        redirect_uri: "http://audiojedit.herokuapp.com/public/soundcloud-callback.html",
+        scope: 'non-expiring',
+        client_id: '1288146c708a6fa789f74748fe960337',
+        redirect_uri: 'http://audiojedit.herokuapp.com/public/soundcloud-callback.html',
         connected: function() {
           localStorage['access_token'] = SC.options.access_token;
         }
       });
     },
     85: function() { // u - Upload to SoundCloud
+      if (!Sounds.result.clips.length) {
+        alert('You have nothing to upload!');
+        return;
+      }
+
       SoundRenderering.create(Sounds.result.clips.map(function(clip) {
         return clip.duration;
       }).reduce(function(a, b) {
@@ -307,7 +320,18 @@ $(window).bind('hashchange load', function() {
       }), function(data) {
         Uploading.create(data); // Yay
       });
+    },
+    82: function() { // r = Reset result
+      Sounds.result = {
+        clips: [],
+        sources: []
+      };
+
+      $('.track.result').width(0).find('.clip').remove();
     }
   };
-  keyMap[ev.keyCode] && keyMap[ev.keyCode]();
+
+  if (!ev.metaKey && !ev.shiftKey && !ev.ctrlKey && !ev.altKey) {
+    keyMap[ev.keyCode] && keyMap[ev.keyCode]();
+  }
 });
