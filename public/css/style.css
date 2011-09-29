@@ -9,6 +9,18 @@ body  {
   margin: 10px;
 }
 
+#daw > header {
+  display: block;
+  margin-bottom: 30px;
+}
+
+#daw > header ul {
+  position: absolute;
+  display: block;
+  top: 0;
+  right: 10px;
+}
+
 .username {
   color: #4b7ed4;
 }

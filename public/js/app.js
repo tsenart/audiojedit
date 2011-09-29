@@ -107,7 +107,8 @@ $(window).bind('hashchange load', function() {
           Animation.update(WebAudio.context.currentTime, clip.duration, function(progress) {
             $('.track.source').find('.playhead').css('left', selection.x1).width(progress * selection.width | 0);
           }, function() {
-            $('.track.source').find('.playhead').width(selection.width);
+            var selectionWidth = $('.track.source').imgAreaSelect({ instance: true }).getSelection().width;
+            $('.track.source').find('.playhead').width(selectionWidth);
           });
         }
       });
