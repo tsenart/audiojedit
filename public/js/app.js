@@ -74,6 +74,143 @@ var Animation = {
   }
 };
 
+var Wav = {};
+Wav.createWaveFileData = (function() {
+  var writeString = function(s, a, offset) {
+    for (var i = 0; i < s.length; ++i) {
+      a[offset + i] = s.charCodeAt(i);
+    }
+  };
+
+  var writeInt16 = function(n, a, offset) {
+    n = n | 0;
+    a[offset + 0] = n & 255;
+    a[offset + 1] = (n >> 8) & 255;
+  };
+
+  var writeInt32 = function(n, a, offset) {
+    n = n | 0
+    a[offset + 0] = n & 255;
+    a[offset + 1] = (n >> 8) & 255;
+    a[offset + 2] = (n >> 16) & 255;
+    a[offset + 3] = (n >> 24) & 255;
+  };
+
+  var writeAudioBuffer = function(audioBuffer, a, offset) {
+    var n = audioBuffer.length,
+        bufferL = audioBuffer.getChannelData(0),
+        sampleL,
+        bufferR = audioBuffer.getChannelData(1),
+        sampleR;
+
+    for (var i = 0; i < n; ++i) {
+      sampleL = bufferL[i] * 32768.0;
+      sampleR = bufferR[i] * 32768.0;
+
+      // Clip left and right samples to the limitations of 16-bit.
+      // If we don't do this then we'll get nasty wrap-around distortion.
+      if (sampleL < -32768) { sampleL = -32768; }
+      if (sampleL >  32767) { sampleL =  32767; }
+      if (sampleR < -32768) { sampleR = -32768; }
+      if (sampleR >  32767) { sampleR =  32767; }
+
+      writeInt16(sampleL, a, offset);
+      writeInt16(sampleR, a, offset + 2);
+      offset += 4;
+    }
+  };
+
+  return function(audioBuffer) {
+    var frameLength = audioBuffer.length,
+        numberOfChannels = audioBuffer.numberOfChannels,
+        sampleRate = audioBuffer.sampleRate,
+        bitsPerSample = 16,
+        byteRate = sampleRate * numberOfChannels * bitsPerSample / 8,
+        blockAlign = numberOfChannels * bitsPerSample / 8,
+        wavDataByteLength = frameLength * numberOfChannels * 2, // 16-bit audio
+        headerByteLength = 44,
+        totalLength = headerByteLength + wavDataByteLength,
+        waveFileData = new Uint8Array(totalLength),
+        subChunk1Size = 16, // for linear PCM
+        subChunk2Size = wavDataByteLength,
+        chunkSize = 4 + (8 + subChunk1Size) + (8 + subChunk2Size);
+
+    writeString('RIFF', waveFileData, 0);
+    writeInt32(chunkSize, waveFileData, 4);
+    writeString('WAVE', waveFileData, 8);
+    writeString('fmt ', waveFileData, 12);
+
+    writeInt32(subChunk1Size, waveFileData, 16);      // SubChunk1Size (4)
+    writeInt16(1, waveFileData, 20);                  // AudioFormat (2)
+    writeInt16(numberOfChannels, waveFileData, 22);   // NumChannels (2)
+    writeInt32(sampleRate, waveFileData, 24);         // SampleRate (4)
+    writeInt32(byteRate, waveFileData, 28);           // ByteRate (4)
+    writeInt16(blockAlign, waveFileData, 32);         // BlockAlign (2)
+    writeInt32(bitsPerSample, waveFileData, 34);      // BitsPerSample (4)
+
+    writeString('data', waveFileData, 36);
+    writeInt32(subChunk2Size, waveFileData, 40);      // SubChunk2Size (4)
+
+    // Write actual audio data starting at offset 44.
+    writeAudioBuffer(audioBuffer, waveFileData, 44);
+
+    return waveFileData;
+  }
+}());
+
+var SoundRenderering = {
+  create: function(duration, cb) {
+    WebAudio.context = new webkitAudioContext(2, Math.ceil(duration) * 44100, 44100);
+    WebAudio.context.oncomplete = function(event) {
+      var data = Wav.createWaveFileData(event.renderedBuffer.getChannelData());
+      WebAudio.context = new webkitAudioContext();
+      cb && cb(data);
+    };
+    $(window).trigger('keydown', { keyCode: 32 }); // Hacky
+    WebAudio.context.startRendering();
+  }
+};
+
+var Uploading = {
+  create: function(data) {
+    var token = localStorage['access_token'];
+
+    if (!token || token.length == 0) {
+      delete offlineContext;
+      alert('Please connect to SoundCloud first');
+      return;
+    }
+
+    var xhr = new XMLHttpRequest();
+        formData = new FormData();
+    // function byteValue(x) {
+    //   return x.charCodeAt(0) & 0xff;
+    // }
+    // var ords = Array.prototype.map.call(data, byteValue);
+    // var ui8a = new Uint8Array(ords);
+    // var bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
+      // bb.append(ui8a.buffer);
+    formData.append('track[asset_data]', data);//bb.getBlob());
+    formData.append('track[title]', Sounds.source.title + ' Jedi Remix!');
+    formData.append('track[sharing]', 'public');
+    xhr.open('POST', 'http://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
+    xhr.onload = function(e) {
+      console.log(xhr);
+      $('.track.result').removeClass('uploading');
+    };
+
+    xhr.onprogress = function(ev) {
+      if(ev.lengthComputable) {
+        $('.track.result').find('.playhead').width((ev.loaded / ev.total * 100) + '%');
+      }
+    };
+
+    $('.track.result').addClass('uploading');
+    xhr.send(formData);
+  }
+};
+
+
 $(window).bind('hashchange load', function() {
   var soundUrl = document.location.hash.substring(1);
   if (!soundUrl.length) return;
@@ -157,8 +294,25 @@ $(window).bind('hashchange load', function() {
       }, function() {
         $('.track.result').find('.playhead').width(0);
       });
+    },
+    67: function() { // c - Connect with SoundCloud
+      SC.connect({
+        client_id:    "1288146c708a6fa789f74748fe960337",
+        redirect_uri: "http://audiojedit.herokuapp.com/public/soundcloud-callback.html",
+        connected: function() {
+          localStorage['access_token'] = SC.options.access_token;
+        }
+      });
+    },
+    85: function() { // u - Upload to SoundCloud
+      SoundRenderering.create(Sounds.result.clips.map(function(clip) {
+        return clip.duration;
+      }).reduce(function(a, b) {
+        return a + b;
+      }), function(data) {
+        Uploading.create(data);
+      });
     }
-
   };
   keyMap[ev.keyCode] && keyMap[ev.keyCode]();
 });

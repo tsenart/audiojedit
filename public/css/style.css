@@ -43,6 +43,10 @@ body  {
   background: -webkit-linear-gradient(top, #4b7ed4, #7eaff7);
 }
 
+.track.result.uploading {
+  background: -webkit-linear-gradient(top, #777, #333);
+}
+
 .playhead {
   z-index: 2;
   position: absolute;
