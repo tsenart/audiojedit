@@ -162,7 +162,7 @@ var SoundRenderering = {
   create: function(duration, cb) {
     WebAudio.context = new webkitAudioContext(2, Math.ceil(duration) * 44100, 44100);
     WebAudio.context.oncomplete = function(event) {
-      var data = Wav.createWaveFileData(event.renderedBuffer.getChannelData());
+      var data = Wav.createWaveFileData(event.renderedBuffer);
       WebAudio.context = new webkitAudioContext();
       cb && cb(data);
     };
