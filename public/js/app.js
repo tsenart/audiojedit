@@ -204,7 +204,7 @@ var SoundRenderering = {
 
 var Uploading = {
   create: function(data) {
-    var token = localStorage['access_token'] //|| '1-9330-522011-d7aec0c537d947e121';
+    var token = localStorage['access_token'];
 
     if (!token || token.length == 0) {
       alert('Please connect to SoundCloud first. Press C');
