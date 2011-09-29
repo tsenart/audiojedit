@@ -181,16 +181,11 @@ var Uploading = {
       return;
     }
 
-    var xhr = new XMLHttpRequest();
-        formData = new FormData();
-    // function byteValue(x) {
-    //   return x.charCodeAt(0) & 0xff;
-    // }
-    // var ords = Array.prototype.map.call(data, byteValue);
-    // var ui8a = new Uint8Array(ords);
-    // var bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
-      // bb.append(ui8a.buffer);
-    formData.append('track[asset_data]', data.buffer);//bb.getBlob());
+    var xhr = new XMLHttpRequest(),
+        formData = new FormData(),
+        bb = new (window.BlobBuilder || window.WebKitBlobBuilder)();
+    bb.append(data.buffer);
+    formData.append('track[asset_data]', bb.getBlob('audio/x-wav'));
     formData.append('track[title]', Sounds.source.title + ' Jedi Remix!');
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'http://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
