@@ -9,15 +9,26 @@ body  {
   margin: 10px;
 }
 
+.username {
+  color: #4b7ed4;
+}
+
 .track {
   z-index: 1;
   position: relative;
   width: 100%;
   height: 280px;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
-.track.loaded {
+.track.source.loaded {
   background: -webkit-linear-gradient(top, #777, #333);
+}
+
+.track.result {
+  width: 0;
+  background: -webkit-linear-gradient(top, #4b7ed4, #7eaff7);
 }
 
 .playhead {
