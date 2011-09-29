@@ -212,12 +212,13 @@ var Uploading = {
 
     bb.append(data.buffer);
     formData.append('track[asset_data]', bb.getBlob('audio/x-wav'));
-    formData.append('track[title]', Sounds.source.title + ' Jedi Remix!');
+    formData.append('track[title]', Sounds.source.title + ' AudioJedit Remix!');
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
       $('#sound-title').html(title);
       $('.track.result').removeClass('uploading').find('.playhead').width(0);
+      alert('Upload completed!');
     };
 
     xhr.onprogress = function(ev) {
