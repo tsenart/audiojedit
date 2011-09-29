@@ -310,7 +310,7 @@ $(window).bind('hashchange load', function() {
       }).reduce(function(a, b) {
         return a + b;
       }), function(data) {
-        Uploading.create(data);
+        Uploading.create(data); // Yay
       });
     }
   };
