@@ -190,7 +190,7 @@ var Uploading = {
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'http://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
-      console.log(xhr);
+      alert('Uploaded!');
       $('.track.result').removeClass('uploading');
     };
 
