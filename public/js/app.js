@@ -249,7 +249,7 @@ $(window).bind('hashchange load', function() {
   $.getJSON(soundUrl + '.json', function(sound) {
     Sounds.source = sound;
 
-    $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
+    $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span><span id="loading"> | Loading...</span>');
 
     $('.track.source').append(Clip.createUI(sound.waveform_url));
 
@@ -257,6 +257,7 @@ $(window).bind('hashchange load', function() {
       Sounds.source.buffer = buffer;
       var waveformHeight = $('.track.source').height();
 
+      $('#loading').remove();
       $('.track.source').addClass('loaded').imgAreaSelect({
         handles: true,
         instance: true,

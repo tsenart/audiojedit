@@ -15,7 +15,12 @@ body  {
 }
 
 #sound-title {
+  font-size: 22px;
   max-width: 40%;
+}
+
+#bookmarklet a:visited, a:active, a:hover, a {
+  color: #555;
 }
 
 #daw > header ul {
