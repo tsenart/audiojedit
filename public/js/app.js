@@ -219,6 +219,7 @@ var Uploading = {
     bb.append(data.buffer);
     formData.append('track[asset_data]', bb.getBlob('audio/x-wav'));
     formData.append('track[title]', Sounds.source.title + ' AudioJedit Remix!');
+    formData.append('track[description]', 'Created with http://audiojedit.herokuapp.com');
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
@@ -227,11 +228,11 @@ var Uploading = {
       alert('Upload completed!');
     };
 
-    xhr.onprogress = function(ev) {
+    xhr.upload.onprogress = function(ev) {
       if(ev.lengthComputable) {
-        var progress = (ev.loaded / ev.total) * 100;
+        var progress = ((ev.loaded / ev.total) * 100).toFixed(2);
         $('#sound-title').html('Uploading ' + progress + '%');
-        $('.track.result').find('.playhead').width(progress + '%');
+        $('.track.result').width(progress + '%');
       }
     };
 
@@ -245,6 +246,14 @@ var Uploading = {
 $(window).bind('hashchange load', function() {
   var soundUrl = document.location.hash.substring(1);
   if (!soundUrl.length) return;
+
+  if (!window['webkitAudioContext']) {
+    $('.track.source')
+    .html('<h1>You need to be running the latest version of Chrome. Get it <a href="http://www.google.com/chrome">here</a></h1>')
+    .addClass('loaded');
+
+    return;
+  }
 
   $.getJSON(soundUrl + '.json', function(sound) {
     Sounds.source = sound;
