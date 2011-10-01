@@ -41,6 +41,7 @@ var router = bee.route({
     '.css': 'text/css',
     '.gif': 'image/gif',
     '.png': 'image/png',
+    '.ico': 'image/png',
     '.js': 'text/javascript'
   }),
 
