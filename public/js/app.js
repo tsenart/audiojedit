@@ -224,19 +224,21 @@ var Uploading = {
     xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
       $('#sound-title').html(title);
-      $('.track.result').removeClass('uploading').width($('.track.result .clip').map(function() {
-        return $(this).width();
-      }).reduce(function(a, b) {
-        return a + b;
-      })).find('.playhead').width(0);
+      $('.track.result').removeClass('uploading').find('.playhead').width(0);
       alert('Upload completed!');
     };
 
     xhr.upload.onprogress = function(ev) {
       if(ev.lengthComputable) {
-        var progress = ((ev.loaded / ev.total) * 100).toFixed(2);
+        var progress = ((ev.loaded / ev.total) * 100).toFixed(2),
+            resultWidth = 0;
+
+        $('.track.result .clip').each(function() {
+          resultWidth += $(this).width();
+        });
+
         $('#sound-title').html('Uploading ' + progress + '%');
-        $('.track.result').width(progress + '%');
+        $('.track.result').width(resultWidth * (progress / 100));
       }
     };
 
