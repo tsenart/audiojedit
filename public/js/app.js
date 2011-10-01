@@ -224,7 +224,11 @@ var Uploading = {
     xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
       $('#sound-title').html(title);
-      $('.track.result').removeClass('uploading').find('.playhead').width(0);
+      $('.track.result').removeClass('uploading').width($('.track.result .clip').map(function() {
+        return $(this).width();
+      }).reduce(function(a, b) {
+        return a + b;
+      })).find('.playhead').width(0);
       alert('Upload completed!');
     };
 
