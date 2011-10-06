@@ -16,7 +16,10 @@ var scResolve = function(resource, finalResponse, callback) {
     host: 'api.soundcloud.com',
     port: 80,
     path: '/resolve.json?client_id=' + SC_CLIENT_ID + '&url=http://soundcloud.com/' + resource,
-    method: 'HEAD'
+    method: 'GET',
+    headers: {
+      'User-Agent': 'AudioJedit'
+    }
   };
 
   return http.request(reqOptions, function(res) {
@@ -61,7 +64,10 @@ var router = bee.route({
       reqOptions = {
         host: reqOptions.host,
         port: 80,
-        path: reqOptions.pathname + reqOptions.search
+        path: reqOptions.pathname + reqOptions.search,
+        headers: {
+          'User-Agent': 'AudioJedit'
+        }
       };
 
       http.get(reqOptions, function(res) {
@@ -76,6 +82,9 @@ var router = bee.route({
           reqOptions = {
             host: reqOptions.host,
             path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
+            headers: {
+              'User-Agent': 'AudioJedit'
+            }
           };
 
           http.get(reqOptions, function(res) {
@@ -90,6 +99,10 @@ var router = bee.route({
               reqOptions = {
                 host: reqOptions.host,
                 path: reqOptions.pathname + reqOptions.search,
+                headers: {
+                  'User-Agent': 'AudioJedit'
+                }
+
               };
 
               http.get(reqOptions, function(res) {
@@ -136,7 +149,10 @@ var router = bee.route({
         var reqOptions = url.parse(res.headers.location);
         reqOptions = {
           host: reqOptions.host,
-          path: reqOptions.pathname + reqOptions.search
+          path: reqOptions.pathname + reqOptions.search,
+          headers: {
+            'User-Agent': 'AudioJedit'
+          }
         };
 
         http.get(reqOptions, function(res) {
