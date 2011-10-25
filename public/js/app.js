@@ -6,13 +6,17 @@ var Sounds = {
   }
 };
 
+var SoundsData = {};
+
 var WebAudio = {
   context: new webkitAudioContext(),
   loadSound: function(url, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
-
+    xhr.onprogress = function(ev) {
+      $('.track.source').width(((ev.loaded / ev.total) * 100) + '%');
+    };
     xhr.onload = function() {
       if (xhr.readyState != 4) return;
       this.context.decodeAudioData(xhr.response, function(buffer) {
@@ -37,15 +41,14 @@ var WebAudio = {
   },
   stopSound: function(source, delay) {
     source.noteOff(this.context.currentTime + (delay || 0));
-  },
-  source: null
+  }
 };
 
 var Clip = {
   createUI: function(src, offsetX, width, left) {
     var width = width || '100%';
     var clip = $('<div></div>').addClass('clip')
-    .css('background-image', 'url("' + src + '")');
+    .css('background-image', 'url("' + src + '")')
     width && clip.css('width', width);
     left && clip.css('left', left);
     offsetX && clip.css('background-position-x', -offsetX + 'px ');
@@ -184,8 +187,7 @@ var SoundRenderering = {
 
     Sounds.result.clips.forEach(function(clip, i, clips) {
       cue += clips[i ? i - 1 : i].duration;
-      Sounds.result.sources.push(WebAudio.createSound(Sounds.source.buffer));
-      WebAudio.playSound(Sounds.result.sources[ Sounds.result.sources.length - 1 ], cue, clip.startTime, clip.duration);
+      WebAudio.playSound(Sounds.result.sources[i], cue, clip.startTime, clip.duration);
     });
 
     Animation.update(WebAudio.context.currentTime, function() {
@@ -211,8 +213,7 @@ var Uploading = {
       return;
     }
 
-    var title = $('#sound-title').html(),
-        xhr = new XMLHttpRequest(),
+    var xhr = new XMLHttpRequest(),
         formData = new FormData(),
         bb = new (window.BlobBuilder || window.WebKitBlobBuilder)()
 
@@ -225,7 +226,7 @@ var Uploading = {
     xhr.onload = function(e) {
       $('#sound-title').html(title);
       $('.track.result').removeClass('uploading').find('.playhead').width(0);
-      alert('Upload completed!');
+      $.facebox('Upload completed!');
     };
 
     xhr.upload.onprogress = function(ev) {
@@ -237,12 +238,11 @@ var Uploading = {
           resultWidth += $(this).width();
         });
 
-        $('#sound-title').html('Uploading ' + progress + '%');
         $('.track.result').width(resultWidth * (progress / 100));
       }
     };
 
-    $('.track.result').addClass('uploading');
+    // $('.track.result').addClass('uploading');
 
     xhr.send(formData);
   }
@@ -264,38 +264,14 @@ $(window).bind('hashchange load', function() {
   $.getJSON(soundUrl + '.json', function(sound) {
     Sounds.source = sound;
 
-    $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span><span id="loading"> | Loading...</span>');
+    $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
 
-    $('.track.source').append(Clip.createUI(sound.waveform_url));
+    $('.track.source').removeClass('loaded').width(0)
+      .find('.clip').replaceWith(Clip.createUI(sound.waveform_url));
 
     WebAudio.loadSound(soundUrl + '/audio', function(buffer) {
       Sounds.source.buffer = buffer;
-      var waveformHeight = $('.track.source').height();
-
-      $('#loading').remove();
-      $('.track.source').addClass('loaded').imgAreaSelect({
-        handles: true,
-        instance: true,
-        minHeight: waveformHeight,
-        onSelectEnd: function(img, selection) {
-          if (!selection.width) return false;
-
-          var waveformWidth = $('.track.source').width(),
-              clip = Clip.create(selection, waveformWidth, Sounds.source.duration);
-
-          WebAudio.source && WebAudio.stopSound(WebAudio.source, 0);
-          WebAudio.source = WebAudio.createSound(Sounds.source.buffer);
-          WebAudio.playSound(WebAudio.source, 0, clip.startTime, clip.duration);
-          Animation.update(WebAudio.context.currentTime, function() {
-            return clip.duration;
-          }, function(progress) {
-            $('.track.source').find('.playhead').css('left', selection.x1).width(progress * selection.width | 0);
-          }, function() {
-            var selectionWidth = $('.track.source').imgAreaSelect({ instance: true }).getSelection().width;
-            $('.track.source').find('.playhead').width(selectionWidth);
-          });
-        }
-      });
+      $('.track.source').addClass('loaded');
     });
   });
 })
@@ -316,6 +292,7 @@ $(window).bind('hashchange load', function() {
       .width($resultTrack.width() + selection.width);
 
       Sounds.result.clips.push(clip);
+      Sounds.result.sources.push(WebAudio.createSound(Sounds.source.buffer));
     },
     32: function() { // Space
       SoundRenderering.play();
@@ -354,10 +331,65 @@ $(window).bind('hashchange load', function() {
     },
     83: function() { // s - Stop playing result
       SoundRenderering.stop();
+    },
+    72: function() {
+      $.facebox({ div: '#help' });
     }
   };
 
-  if (!ev.metaKey && !ev.shiftKey && !ev.ctrlKey && !ev.altKey) {
+  if (!ev.metaKey && !ev.shiftKey && !ev.ctrlKey && !ev.altKey &&
+      ev.target && !/input|textarea/i.test(ev.target.nodeName)
+     ) {
     keyMap[ev.keyCode] && keyMap[ev.keyCode]();
   }
 });
+
+(function() {
+  var req = null;
+  $('#search').keyup(function(ev) {
+    req && req.abort();
+    req = $.getJSON('http://api.soundcloud.com/tracks.json', {
+      q: $(this).val(), limit: 8, order: 'hotness', client_id: '1288146c708a6fa789f74748fe960337'
+    }).done(function(sounds) {
+      SoundsData = {};
+      $('.sound').remove();
+      sounds.forEach(function(sound) {
+        SoundsData[sound.id] = sound;
+        $('<img src="' + (sound.artwork_url || sound.user.avatar_url) + '">').addClass('sound').data('sound-id', sound.id).appendTo('#daw header');
+      });
+    });
+    return false;
+  }.throttle(100));
+
+  $('.sound').live('click', function(ev) {
+    var sound = SoundsData[$(this).data('sound-id')];
+    document.location.hash = '/' + sound.user.permalink + '/' + sound.permalink;
+    return false;
+  });
+
+  $('.track.source').imgAreaSelect({
+    handles: true,
+    instance: true,
+    minHeight: $('.track.source').height(),
+    onSelectEnd: function(img, selection) {
+      if (!selection.width || !$('.track.source').hasClass('loaded')) {
+        return false;
+      }
+
+      var waveformWidth = $('.track.source').width(),
+          clip = Clip.create(selection, waveformWidth, Sounds.source.duration);
+
+      Sounds.source && WebAudio.stopSound(Sounds.source, 0);
+      Sounds.source = WebAudio.createSound(Sounds.source.buffer);
+      WebAudio.playSound(Sounds.source, 0, clip.startTime, clip.duration);
+      Animation.update(WebAudio.context.currentTime, function() {
+        return clip.duration;
+      }, function(progress) {
+        $('.track.source').find('.playhead').css('left', selection.x1).width(progress * selection.width | 0);
+      }, function() {
+        var selectionWidth = $('.track.source').imgAreaSelect({ instance: true }).getSelection().width;
+        $('.track.source').find('.playhead').width(selectionWidth);
+      });
+    }
+  });
+}());

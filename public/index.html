@@ -6,38 +6,48 @@
   <link rel="stylesheet" href="/public/css/imgareaselect-animated.css" type="text/css" media="screen">
   <link rel="stylesheet" href="/public/css/normalize.css" type="text/css" media="screen">
   <link rel="stylesheet" href="/public/css/style.css" type="text/css" media="screen">
+  <link rel="stylesheet" href="/public/css/facebox.css" type="text/css" media="screen">
   <link rel="shortcut icon" href="/public/favicon.ico">
 </head>
 <body>
   <div id="daw">
     <header>
       <h1 id="sound-title">AudioJedit</h1>
-      <p id="bookmarklet">
-        <a href="javascript:if(/soundcloud\.com/.test(document.location.host))document.location.href='http://audiojedit.herokuapp.com/#'+document.location.pathname">
-          Bookmarklet (drag me to your bookmarks bar!)
-        </a>
-      </p>
-      <ul>
-        <li>Change the url hash to a SoundCloud permalink (<a id="example" href="#"></a>)</li>
-        <li>Use your mouse to make selection of the waveform. Press <span style="font-weight: bold;">Esc</span> to cancel.</li>
-        <li>Press <span style="font-weight: bold;">Enter</span> to add that selection to a new waveform.</li>
-        <li>Press <span style="font-weight: bold;">Space</span> to play the newly composed sound.</li>
-        <li>Press <span style="font-weight: bold;">S</span> to stop.</li>
-        <li>Press <span style="font-weight: bold;">R</span> to reset it if you don't like it.</li>
-        <li>Press <span style="font-weight: bold;">C</span> to connect with SoundCloud.</li>
-        <li>Press <span style="font-weight: bold;">U</span> to upload to SoundCloud.</li>
-      </ul>
+      <input type="text" name="search" id="search" placeholder="Search for sounds... Press H for Help">
     </header>
     <div class="track source">
       <div class="playhead"></div>
+      <div class="clip"></div>
     </div>
     <div class="track result">
       <div class="playhead"></div>
     </div>
   </div>
+  <div id="help" rel="facebox">
+    <h2>Welcome to AudioJedit!</h2>
+    <p>
+      Use the search box to search sounds on SoundCloud and load them by clicking the avatar.
+      Once loaded you can extract selections of the waveform into a new one.
+    </p>
+    <ul>
+      <li>Use your mouse to make selection of the waveform. Press <span style="font-weight: bold;">Esc</span> to cancel.</li>
+      <li>Press <span style="font-weight: bold;">Enter</span> to add that selection to a new waveform.</li>
+      <li>Press <span style="font-weight: bold;">Space</span> to play the newly composed sound.</li>
+      <li>Press <span style="font-weight: bold;">S</span> to stop.</li>
+      <li>Press <span style="font-weight: bold;">R</span> to reset it if you don't like it.</li>
+      <li>Press <span style="font-weight: bold;">U</span> to upload to SoundCloud.</li>
+    </ul>
+    <h3>
+      <a href="javascript:if(/soundcloud\.com/.test(document.location.host))document.location.href='http://audiojedit.herokuapp.com/#'+document.location.pathname">
+      Bookmarklet
+      </a>
+    </h3>
+  </div>
   <script src="/public/js/jquery.js"></script>
   <script src="/public/js/jquery.imgareaselect.min.js"></script>
   <script src="http://connect.soundcloud.com/2/latest.min.js"></script>
+  <script src="/public/js/facebox/facebox.js"></script>
+  <script src="/public/js/augment-throttle.js"></script>
   <script src="/public/js/app.js"></script>
   <script>
     var _gaq = _gaq || [];

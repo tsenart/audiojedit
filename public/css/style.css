@@ -5,22 +5,56 @@ body  {
   color: #333;
 }
 
+#help {
+  display: none;
+}
+
 #daw {
   margin: 10px;
 }
 
 #daw > header {
   display: block;
-  margin-bottom: 75px;
+  margin-bottom: 30px;
+  height: 100px;
 }
 
 #sound-title {
-  font-size: 22px;
-  max-width: 40%;
+  position: absolute;
+  top: -5px;
+  left: 10px;
+  font-size: 20px;
+  width: 280px;
+  text-overflow: ellipsis;
 }
 
-#bookmarklet a:visited, a:active, a:hover, a {
-  color: #555;
+#search {
+  position: absolute;
+  top: 77px;
+  left: 10px;
+  width: 280px;
+  height: 30px;
+  -webkit-border-radius: 5px;
+  border: 1px solid #999;
+  outline: none;
+  font-size: 15px;
+}
+
+.sound {
+  width: 100px;
+  height: 100px;
+  margin-right: 1px;
+  cursor: pointer;
+  opacity: 0.8;
+  -webkit-transition: all .2s ease-in-out;
+}
+
+.sound:hover {
+  opacity: 1;
+}
+
+.sound:first-of-type {
+  margin-left: 300px;
 }
 
 #daw > header ul {
@@ -44,11 +78,11 @@ body  {
 }
 
 .track.source {
+  background: -webkit-linear-gradient(top, #777, #333);
   -webkit-transition: width 0.6s ease-in-out;
 }
 
 .track.source.loaded {
-  background: -webkit-linear-gradient(top, #777, #333);
   width: 100%;
 }
 
@@ -72,5 +106,6 @@ body  {
   z-index: 3;
   position: absolute;
   height: 100%;
+  background-size: cover;
   image-rendering: -webkit-optimize-contrast;
 }
