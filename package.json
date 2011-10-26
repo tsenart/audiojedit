@@ -1,6 +1,6 @@
 {
   "name": "audiojedit",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "dependencies": {
     "beeline": "0.1.6"
   }
