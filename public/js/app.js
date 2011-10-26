@@ -302,7 +302,6 @@ $(window).bind('hashchange load', function() {
 
   $.getJSON(soundUrl + '.json', function(sound) {
     Sounds.sources[sound.id] = sound;
-
     $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
 
     $('.track.source').removeClass('loaded').width(0)
@@ -329,7 +328,6 @@ $(window).bind('hashchange load', function() {
 
       $resultTrack.append(Clip.createUI(sound.waveform_url, selection.x1, selection.width, $resultTrack.width()))
       .width($resultTrack.width() + selection.width);
-
       clip.id = sound.id;
       Sounds.result.clips.push(clip);
     },
@@ -414,12 +412,24 @@ $(window).bind('hashchange load', function() {
     return false;
   });
 
+  $('.sound').live('mouseenter', function(ev) {
+    var sound = SoundsData[$(this).data('sound-id')];
+    $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
+    return false;
+  });
+
+  $('.sound').live('mouseleave', function(ev) {
+    var sound = Sounds.sources[Sounds.current];
+    $('#sound-title').html(sound ? sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>' : 'AudioJedit');
+    return false;
+  });
+
   $('.track.source').imgAreaSelect({
     handles: true,
     instance: true,
     minHeight: $('.track.source').height(),
     onSelectEnd: function(img, selection) {
-      if (!selection.width || !$('.track.source').hasClass('loaded')) {
+      if (!selection.width || !Sounds.sources[Sounds.current]) {
         return false;
       }
 

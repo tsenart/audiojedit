@@ -30,7 +30,7 @@ body  {
 
 #search {
   position: absolute;
-  top: 100px;
+  top: 85px;
   left: 10px;
   width: 280px;
   height: 50px;
@@ -41,7 +41,7 @@ body  {
 }
 
 .sound {
-  margin-top: 45px;
+  margin-top: 30px;
   width: 100px;
   height: 100px;
   margin-right: 1px;
