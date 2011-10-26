@@ -1,5 +1,6 @@
 var Sounds = {
-  source: null,
+  current: null,
+  sources: {},
   result: {
     clips: [],
     sources: []
@@ -24,6 +25,8 @@ var WebAudio = {
       });
     }.bind(this);
 
+    WebAudio.request && WebAudio.request.abort();
+    WebAudio.request = xhr;
     xhr.send();
   },
   createSound: function(buffer) {
@@ -62,20 +65,50 @@ var Clip = {
   }
 };
 
-var Animation = {
-  update: function(initialTime, duration, renderer, ender) {
-    var currentTime = WebAudio.context.currentTime - initialTime,
-        currentDuration = duration(),
-        progress = currentTime / currentDuration;
+var Animation = function(initialTime, duration, renderer, ender) {
+  this.initialTime = initialTime;
+  this.duration = duration;
+  this.renderer = renderer;
+  this.ender = ender;
+  this.running = false;
+};
 
-    if (currentTime <= currentDuration && renderer) {
-      renderer(progress);
-      webkitRequestAnimationFrame(function() {
-        this.update(initialTime, duration, renderer, ender);
-      }.bind(this));
-    } else if (currentTime > currentDuration && ender) {
-      ender();
-    }
+Animation.prototype.start = function() {
+  this.running = true;
+  this.update();
+};
+
+Animation.prototype.update = function() {
+  var currentTime = WebAudio.context.currentTime - this.initialTime,
+      currentDuration = this.duration(),
+      progress = currentTime / currentDuration;
+
+  if (!this.running) {
+    return;
+  }
+
+  if (currentTime <= currentDuration && this.renderer) {
+    this.renderer(progress);
+    webkitRequestAnimationFrame(function() {
+      this.update();
+    }.bind(this));
+  } else if (currentTime > currentDuration && this.ender) {
+    this.ender();
+  }
+};
+
+Animation.prototype.stop = function() {
+  this.running = false;
+  this.ender && this.ender();
+};
+
+var Selection = {
+  cancel: function() {
+    var $sourceTrack = $('.track.source'), sound = Sounds.sources[Sounds.current];
+    $sourceTrack.imgAreaSelect({ instance: true }).cancelSelection();
+    if (!sound) return;
+    sound.cue && WebAudio.stopSound(sound.cue, 0);
+    sound.anim && sound.anim.stop();
   }
 };
 
@@ -179,18 +212,22 @@ var SoundRenderering = {
       WebAudio.stopSound(source);
     });
     Sounds.result.sources = [];
+    if (Sounds.result.anim) {
+      Sounds.result.anim.stop();
+    }
   },
   play: function() {
-    var cue = -Sounds.result.clips[0].duration;
+    var delay = -Sounds.result.clips[0].duration;
 
     this.stop();
 
     Sounds.result.clips.forEach(function(clip, i, clips) {
-      cue += clips[i ? i - 1 : i].duration;
-      WebAudio.playSound(Sounds.result.sources[i], cue, clip.startTime, clip.duration);
+      var cue = WebAudio.createSound(Sounds.sources[clip.id].buffer);
+      Sounds.result.sources.push(cue);
+      delay += clips[i ? i - 1 : i].duration;
+      WebAudio.playSound(cue, delay, clip.startTime, clip.duration);
     });
-
-    Animation.update(WebAudio.context.currentTime, function() {
+    Sounds.result.anim = new Animation(WebAudio.context.currentTime, function() {
       return Sounds.result.sources.length ? Sounds.result.clips.map(function(clip) {
         return clip.duration;
       }).reduce(function(a, b) {
@@ -201,6 +238,7 @@ var SoundRenderering = {
     }, function() {
       $('.track.result').find('.playhead').width(0);
     });
+    Sounds.result.anim.start();
   }
 };
 
@@ -215,16 +253,19 @@ var Uploading = {
 
     var xhr = new XMLHttpRequest(),
         formData = new FormData(),
+        title = '',
         bb = new (window.BlobBuilder || window.WebKitBlobBuilder)()
 
+    if (!(title = prompt('Give a title to this sound!'))) {
+      title = 'AudioJedit Mashup ' + ((Math.random() * 1e10)| 0);
+    }
     bb.append(data.buffer);
     formData.append('track[asset_data]', bb.getBlob('audio/x-wav'));
-    formData.append('track[title]', Sounds.source.title + ' AudioJedit Remix!');
+    formData.append('track[title]', title);
     formData.append('track[description]', 'Created with http://audiojedit.herokuapp.com');
     formData.append('track[sharing]', 'public');
     xhr.open('POST', 'https://api.soundcloud.com/tracks.json?oauth_token=' + token, true);
     xhr.onload = function(e) {
-      $('#sound-title').html(title);
       $('.track.result').removeClass('uploading').find('.playhead').width(0);
       $.facebox('Upload completed!');
     };
@@ -241,8 +282,6 @@ var Uploading = {
         $('.track.result').width(resultWidth * (progress / 100));
       }
     };
-
-    // $('.track.result').addClass('uploading');
 
     xhr.send(formData);
   }
@@ -262,7 +301,7 @@ $(window).bind('hashchange load', function() {
   }
 
   $.getJSON(soundUrl + '.json', function(sound) {
-    Sounds.source = sound;
+    Sounds.sources[sound.id] = sound;
 
     $('#sound-title').html(sound.title + ' by ' + '<span class="username">' + sound.user.username + '</span>');
 
@@ -270,7 +309,8 @@ $(window).bind('hashchange load', function() {
       .find('.clip').replaceWith(Clip.createUI(sound.waveform_url));
 
     WebAudio.loadSound(soundUrl + '/audio', function(buffer) {
-      Sounds.source.buffer = buffer;
+      Sounds.current = sound.id;
+      Sounds.sources[sound.id].buffer = buffer;
       $('.track.source').addClass('loaded');
     });
   });
@@ -278,34 +318,23 @@ $(window).bind('hashchange load', function() {
 .bind('keydown', function(ev) {
   var keyMap = {
     27: function() { // Escape
-      var $sourceTrack = $('.track.source');
-      $sourceTrack.imgAreaSelect({ instance: true }).cancelSelection();
-      $sourceTrack.find('.playhead').css({ left: 0, width: 0});
+      Selection.cancel();
     },
     13: function() { // Enter
       var $sourceTrack = $('.track.source'),
           $resultTrack = $('.track.result'),
+          sound = Sounds.sources[Sounds.current],
           selection = $sourceTrack.imgAreaSelect({ instance: true }).getSelection(),
-          clip = Clip.create(selection, $sourceTrack.width(), Sounds.source.duration);
+          clip = Clip.create(selection, $sourceTrack.width(), sound.duration);
 
-      $resultTrack.append(Clip.createUI(Sounds.source.waveform_url, selection.x1, selection.width, $resultTrack.width()))
+      $resultTrack.append(Clip.createUI(sound.waveform_url, selection.x1, selection.width, $resultTrack.width()))
       .width($resultTrack.width() + selection.width);
 
+      clip.id = sound.id;
       Sounds.result.clips.push(clip);
-      Sounds.result.sources.push(WebAudio.createSound(Sounds.source.buffer));
     },
     32: function() { // Space
       SoundRenderering.play();
-    },
-    67: function() { // c - Connect with SoundCloud
-      SC.connect({
-        scope: 'non-expiring',
-        client_id: '1288146c708a6fa789f74748fe960337',
-        redirect_uri: 'http://audiojedit.herokuapp.com/public/soundcloud-callback.html',
-        connected: function() {
-          localStorage['access_token'] = SC.options.access_token;
-        }
-      });
     },
     85: function() { // u - Upload to SoundCloud
       if (!Sounds.result.clips.length) {
@@ -313,13 +342,29 @@ $(window).bind('hashchange load', function() {
         return;
       }
 
-      SoundRenderering.create(Sounds.result.clips.map(function(clip) {
-        return clip.duration;
-      }).reduce(function(a, b) {
-        return a + b;
-      }), function(data) {
-        Uploading.create(data); // Yay
-      });
+      var renderAndUpload = function() {
+        SoundRenderering.create(Sounds.result.clips.map(function(clip) {
+          return clip.duration;
+        }).reduce(function(a, b) {
+          return a + b;
+        }), function(data) {
+          Uploading.create(data); // Yay
+        });
+      };
+
+      if (!localStorage['access_token']) {
+        SC.connect({
+          scope: 'non-expiring',
+          client_id: '1288146c708a6fa789f74748fe960337',
+          redirect_uri: 'http://audiojedit.herokuapp.com/public/soundcloud-callback.html',
+          connected: function() {
+            localStorage['access_token'] = SC.options.access_token;
+            renderAndUpload();
+          }
+        });
+      } else {
+        renderAndUpload();
+      }
     },
     82: function() { // r = Reset result
       Sounds.result = {
@@ -347,9 +392,10 @@ $(window).bind('hashchange load', function() {
 (function() {
   var req = null;
   $('#search').keyup(function(ev) {
+    Selection.cancel();
     req && req.abort();
     req = $.getJSON('http://api.soundcloud.com/tracks.json', {
-      q: $(this).val(), limit: 8, order: 'hotness', client_id: '1288146c708a6fa789f74748fe960337'
+      q: $(this).val(), limit: 9, order: 'hotness', client_id: '1288146c708a6fa789f74748fe960337'
     }).done(function(sounds) {
       SoundsData = {};
       $('.sound').remove();
@@ -362,6 +408,7 @@ $(window).bind('hashchange load', function() {
   }.throttle(100));
 
   $('.sound').live('click', function(ev) {
+    Selection.cancel();
     var sound = SoundsData[$(this).data('sound-id')];
     document.location.hash = '/' + sound.user.permalink + '/' + sound.permalink;
     return false;
@@ -377,12 +424,14 @@ $(window).bind('hashchange load', function() {
       }
 
       var waveformWidth = $('.track.source').width(),
-          clip = Clip.create(selection, waveformWidth, Sounds.source.duration);
+          sound = Sounds.sources[Sounds.current],
+          clip = Clip.create(selection, waveformWidth, sound.duration);
 
-      Sounds.source && WebAudio.stopSound(Sounds.source, 0);
-      Sounds.source = WebAudio.createSound(Sounds.source.buffer);
-      WebAudio.playSound(Sounds.source, 0, clip.startTime, clip.duration);
-      Animation.update(WebAudio.context.currentTime, function() {
+      sound.cue && WebAudio.stopSound(sound.cue, 0);
+      sound.cue = WebAudio.createSound(sound.buffer);
+      sound.anim && sound.anim.stop();
+      WebAudio.playSound(sound.cue, 0, clip.startTime, clip.duration);
+      sound.anim = new Animation(WebAudio.context.currentTime, function() {
         return clip.duration;
       }, function(progress) {
         $('.track.source').find('.playhead').css('left', selection.x1).width(progress * selection.width | 0);
@@ -390,6 +439,7 @@ $(window).bind('hashchange load', function() {
         var selectionWidth = $('.track.source').imgAreaSelect({ instance: true }).getSelection().width;
         $('.track.source').find('.playhead').width(selectionWidth);
       });
+      sound.anim.start();
     }
   });
 }());

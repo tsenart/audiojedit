@@ -15,7 +15,7 @@ body  {
 
 #daw > header {
   display: block;
-  margin-bottom: 30px;
+  margin-bottom: 60px;
   height: 100px;
 }
 
@@ -24,23 +24,24 @@ body  {
   top: -5px;
   left: 10px;
   font-size: 20px;
-  width: 280px;
+  width: 1000px;
   text-overflow: ellipsis;
 }
 
 #search {
   position: absolute;
-  top: 77px;
+  top: 100px;
   left: 10px;
   width: 280px;
-  height: 30px;
+  height: 50px;
   -webkit-border-radius: 5px;
   border: 1px solid #999;
   outline: none;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .sound {
+  margin-top: 45px;
   width: 100px;
   height: 100px;
   margin-right: 1px;
