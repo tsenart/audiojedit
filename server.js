@@ -17,7 +17,7 @@ var serveError = function (response) {
 };
 
 var handleResponse = function (response, callback) {
-  return function (res) {
+  var responseHandler = function (res) {
     if (!res.headers.location) {
       res.headers['Content-Length'] = 0;
       response.writeHead(res.statusCode, res.headers);
@@ -26,6 +26,7 @@ var handleResponse = function (response, callback) {
       callback && callback(res);
     }
   };
+  return responseHandler;
 };
 
 var scResolve = function (resource, finalResponse, callback) {
