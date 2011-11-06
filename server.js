@@ -29,6 +29,18 @@ var handleResponse = function (response, callback) {
   return responseHandler;
 };
 
+var serveIndex = function (response) {
+  return fs.readFile('./public/index.html', function (err, data) {
+    if (err) {
+      console.log(err);
+    } else {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end(data);
+    }
+  });
+};
+
+// resolves 'resource' from the SC API, and if found, passes it to a callback
 var scResolve = function (resource, response, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
@@ -47,17 +59,6 @@ var scResolve = function (resource, response, callback) {
   req.end();
 
   return req;
-};
-
-var serveIndex = function (response) {
-  return fs.readFile('./public/index.html', function (err, data) {
-    if (err) {
-      console.log(err);
-    } else {
-      response.writeHead(200, { 'Content-Type': 'text/html' });
-      response.end(data);
-    }
-  });
 };
 
 var router = bee.route({
