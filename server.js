@@ -36,6 +36,17 @@ var scResolve = function (resource, finalResponse, callback) {
   .end();
 };
 
+var serveIndex = function (response) {
+  return fs.readFile('./public/index.html', function (err, data) {
+    if (err) {
+      console.log(err);
+    } else {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end(data);
+    }
+  });
+};
+
 var router = bee.route({
 
   'r`^/public/(.*)`': bee.staticDir('./public/', {
@@ -48,14 +59,7 @@ var router = bee.route({
   }),
 
   'r`^/(index(\\.html?)?)?(\\?.*)?$`': function (req, finalResponse, matches) {
-    return fs.readFile('./public/index.html', function (err, data) {
-      if (err) {
-        console.log(err);
-      } else {
-        finalResponse.writeHead(200, { 'Content-Type': 'text/html' });
-        finalResponse.end(data);
-      }
-    });
+    return serveIndex(finalResponse);
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, finalResponse, matches) {
@@ -134,14 +138,7 @@ var router = bee.route({
 
     scResolve(matches.join('/'), finalResponse, function (res) {
       if (format == 'html') {
-        fs.readFile('./public/index.html', function (err, data) {
-          if (err) {
-            console.log(err);
-          } else {
-            finalResponse.writeHead(200, { 'Content-Type': 'text/html' });
-            finalResponse.end(data);
-          }
-        });
+        return serveIndex(finalResponse)
       }
 
       if (format == 'json') {
