@@ -29,7 +29,7 @@ var handleResponse = function (response, callback) {
   return responseHandler;
 };
 
-var scResolve = function (resource, finalResponse, callback) {
+var scResolve = function (resource, response, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
     port: 80,
@@ -40,9 +40,9 @@ var scResolve = function (resource, finalResponse, callback) {
     }
   };
 
-  var req = http.request(reqOptions, handleResponse(finalResponse, callback));
+  var req = http.request(reqOptions, handleResponse(response, callback));
 
-  req.on('error', serveError(finalResponse));
+  req.on('error', serveError(response));
 
   req.end();
 
