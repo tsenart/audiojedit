@@ -136,36 +136,34 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, finalResponse, matches) {
     var format = matches.filter(Boolean).length == 3 ? matches.pop().substring(1) : 'html';
 
+    // only json is permitted, else serve index
+    if (format != 'json') {
+      return serveIndex(finalResponse)
+    }
+
     scResolve(matches.join('/'), finalResponse, function (res) {
-      if (format == 'html') {
-        return serveIndex(finalResponse)
-      }
 
-      if (format == 'json') {
-        var reqOptions = url.parse(res.headers.location);
-        reqOptions = {
-          host: reqOptions.host,
-          path: reqOptions.pathname + reqOptions.search,
-          headers: {
-            'User-Agent': 'AudioJedit'
-          }
-        };
+      var reqOptions = url.parse(res.headers.location);
+      reqOptions = {
+        host: reqOptions.host,
+        path: reqOptions.pathname + reqOptions.search,
+        headers: {
+          'User-Agent': 'AudioJedit'
+        }
+      };
 
-        http.get(reqOptions, function (res) {
-          finalResponse.writeHead(res.statusCode, res.headers);
-          res.on('data', function (chunk) {
-            finalResponse.write(chunk);
-          })
-          .on('end', function () {
-            finalResponse.end();
-          });
+      http.get(reqOptions, function (res) {
+        finalResponse.writeHead(res.statusCode, res.headers);
+        res.on('data', function (chunk) {
+          finalResponse.write(chunk);
         })
-        .on('error', function (err) {
-          errorHandler(err, finalResponse);
-        })
-      }
-
-      // what to do if neither html nor json?
+        .on('end', function () {
+          finalResponse.end();
+        });
+      })
+      .on('error', function (err) {
+        errorHandler(err, finalResponse);
+      });
 
     });
   }
