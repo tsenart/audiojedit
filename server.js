@@ -21,7 +21,7 @@ var scResolve = function (resource, finalResponse, callback) {
     }
   };
 
-  return http.request(reqOptions, function (res) {
+  var req = http.request(reqOptions, function (res) {
     if (!res.headers.location) {
       res.headers['Content-Length'] = 0;
       finalResponse.writeHead(res.statusCode, res.headers);
@@ -29,11 +29,15 @@ var scResolve = function (resource, finalResponse, callback) {
     } else {
       callback && callback(res);
     }
-  })
-  .on('error', function (err) {
+  });
+
+  req.on('error', function (err) {
     errorHandler(err, finalResponse);
-  })
-  .end();
+  });
+
+  req.end();
+
+  return req;
 };
 
 var serveIndex = function (response) {
