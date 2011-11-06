@@ -164,6 +164,9 @@ var router = bee.route({
           errorHandler(err, finalResponse);
         })
       }
+
+      // what to do if neither html nor json?
+
     });
   }
 });
