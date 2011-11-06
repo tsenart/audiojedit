@@ -10,6 +10,12 @@ var errorHandler = function (err, res) {
   res.end();
 };
 
+var serveError = function (response) {
+  return function (err) {
+    errorHandler(err, response);
+  };
+};
+
 var scResolve = function (resource, finalResponse, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
@@ -31,9 +37,7 @@ var scResolve = function (resource, finalResponse, callback) {
     }
   });
 
-  req.on('error', function (err) {
-    errorHandler(err, finalResponse);
-  });
+  req.on('error', serveError(finalResponse));
 
   req.end();
 
@@ -121,19 +125,13 @@ var router = bee.route({
                   finalResponse.end();
                 });
               })
-              .on('error', function (err) {
-                errorHandler(err, finalResponse);
-              })
+              .on('error', serveError(finalResponse))
             }
           })
-          .on('error', function (err) {
-            errorHandler(err, finalResponse);
-          })
+          .on('error', serveError(finalResponse))
         })
       })
-      .on('error', function (err) {
-        errorHandler(err, finalResponse);
-      })
+      .on('error', serveError(finalResponse))
     });
   },
 
@@ -165,9 +163,7 @@ var router = bee.route({
           finalResponse.end();
         });
       })
-      .on('error', function (err) {
-        errorHandler(err, finalResponse);
-      });
+      .on('error', serveError(finalResponse));
 
     });
   }
