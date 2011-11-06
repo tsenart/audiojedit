@@ -16,6 +16,18 @@ var serveError = function (response) {
   };
 };
 
+var reqCallback = function (response, callback) {
+  return function (res) {
+    if (!res.headers.location) {
+      res.headers['Content-Length'] = 0;
+      response.writeHead(res.statusCode, res.headers);
+      response.end();
+    } else {
+      callback && callback(res);
+    }
+  };
+};
+
 var scResolve = function (resource, finalResponse, callback) {
   var reqOptions = {
     host: 'api.soundcloud.com',
@@ -27,15 +39,7 @@ var scResolve = function (resource, finalResponse, callback) {
     }
   };
 
-  var req = http.request(reqOptions, function (res) {
-    if (!res.headers.location) {
-      res.headers['Content-Length'] = 0;
-      finalResponse.writeHead(res.statusCode, res.headers);
-      finalResponse.end();
-    } else {
-      callback && callback(res);
-    }
-  });
+  var req = http.request(reqOptions, reqCallback(finalResponse, callback));
 
   req.on('error', serveError(finalResponse));
 
