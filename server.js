@@ -16,7 +16,7 @@ var serveError = function (response) {
   };
 };
 
-var reqCallback = function (response, callback) {
+var handleResponse = function (response, callback) {
   return function (res) {
     if (!res.headers.location) {
       res.headers['Content-Length'] = 0;
@@ -39,7 +39,7 @@ var scResolve = function (resource, finalResponse, callback) {
     }
   };
 
-  var req = http.request(reqOptions, reqCallback(finalResponse, callback));
+  var req = http.request(reqOptions, handleResponse(finalResponse, callback));
 
   req.on('error', serveError(finalResponse));
 
