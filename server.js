@@ -65,7 +65,7 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
-var getJson = function (response, callback) {
+var getJson = function (response, callbacks) {
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
     var data = '';
@@ -73,13 +73,13 @@ var getJson = function (response, callback) {
       data += chunk;
     });
     res.on('end', function () {
-      callback(data, response);
+      callbacks[0](data, response, callbacks[1]);
     });
   };
   return responseHandler;
 };
 
-var getMp3 = function (track, response) {
+var getMp3 = function (track, response, callback) {
   track = JSON.parse(track);
   var reqOptions = url.parse(track.stream_url);
   reqOptions = {
@@ -90,7 +90,7 @@ var getMp3 = function (track, response) {
     }
   };
 
-  var req = http.get(reqOptions, handleResponse(response, serveMp3(response), 404, { 'Content-Type': 'application/octet-stream' }));
+  var req = http.get(reqOptions, handleResponse(response, callback, 404, { 'Content-Type': 'application/octet-stream' }));
 
   req.on('error', serveError(response));
 
@@ -178,7 +178,7 @@ var router = bee.route({
         }
       };
 
-      var req = http.get(reqOptions, getJson(response, getMp3));
+      var req = http.get(reqOptions, getJson(response, [getMp3, serveMp3(response)]));
 
       req.on('error', serveError(response));
 
