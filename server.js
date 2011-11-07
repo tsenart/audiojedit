@@ -44,7 +44,10 @@ var handleResponse = function (response, callback, errorStatusCode, errorHeaders
 };
 
 // resolves 'resource' from the SC API, and if found, passes it to a callback
-var scResolve = function (resource, response, callback) {
+var scResolve = function (resource, response) {
+  var chainableArgs = Array.prototype.slice.call(arguments, 1);
+  var callback = chainCallbacks(chainableArgs);
+
   var reqOptions = {
     host: 'api.soundcloud.com',
     port: 80,
@@ -169,7 +172,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    return scResolve(resource, response, makeRequest(response, getChunks, resolveTrack, makeRequest, writeResponse));
+    return scResolve(resource, response, makeRequest, getChunks, resolveTrack, makeRequest, writeResponse);
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
@@ -181,7 +184,7 @@ var router = bee.route({
       return serveIndex(response);
     }
 
-    return scResolve(resource, response, makeRequest(response, writeResponse));
+    return scResolve(resource, response, makeRequest, writeResponse);
   }
 });
 
