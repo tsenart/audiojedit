@@ -65,6 +65,27 @@ var getRemoteContent = function (response, callback) {
   return responseHandler;
 };
 
+var serveRemoteContent = function (response) {
+  var responseHandler = function (res) {
+    var reqOptions = url.parse(res.headers.location);
+    reqOptions = {
+      host: reqOptions.host,
+      port: 80,
+      path: reqOptions.pathname + reqOptions.search,
+      headers: {
+        'User-Agent': 'AudioJedit'
+      }
+    };
+
+    var req = http.get(reqOptions, writeResponse(response));
+
+    req.on('error', serveError(response));
+
+    return req;
+  };
+  return responseHandler;
+};
+
 var getJson = function (response, callbacks) {
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
@@ -106,27 +127,6 @@ var serveIndex = function (response) {
       response.end(data);
     }
   });
-};
-
-var serveRemoteContent = function (response) {
-  var responseHandler = function (res) {
-    var reqOptions = url.parse(res.headers.location);
-    reqOptions = {
-      host: reqOptions.host,
-      port: 80,
-      path: reqOptions.pathname + reqOptions.search,
-      headers: {
-        'User-Agent': 'AudioJedit'
-      }
-    };
-
-    var req = http.get(reqOptions, writeResponse(response));
-
-    req.on('error', serveError(response));
-
-    return req;
-  };
-  return responseHandler;
 };
 
 // resolves 'resource' from the SC API, and if found, passes it to a callback
