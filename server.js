@@ -4,6 +4,18 @@ var url = require('url'),
     bee = require('beeline'),
     SC_CLIENT_ID = '1288146c708a6fa789f74748fe960337';
 
+var makeChain = function (args) {
+  var chain = Array.prototype.slice.call(args, 2);
+  chain.unshift(args[0]);
+  return chain;
+};
+
+var chainCallbacks = function (args) {
+  var chain = makeChain(args);
+  var callback = args[1].apply(this, chain);
+  return callback;
+};
+
 var errorHandler = function (err, response) {
   console.log(err);
   response.writeHead(500);
@@ -52,7 +64,9 @@ var scResolve = function (resource, response, callback) {
   return req;
 };
 
-var resolveTrack = function (response, callback) {
+var resolveTrack = function (response) {
+  var callback = chainCallbacks(arguments);
+
   var responseHandler = function (track) {
     track = JSON.parse(track);
     var reqOptions = url.parse(track.stream_url);
@@ -86,7 +100,9 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
-var makeRequest = function (response, callback) {
+var makeRequest = function (response) {
+  var callback = chainCallbacks(arguments);
+
   var responseHandler = function (res) {
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
@@ -108,7 +124,9 @@ var makeRequest = function (response, callback) {
 };
 
 // gets chunked data, then passes data to a callback
-var getChunks = function (response, callback) {
+var getChunks = function (response) {
+  var callback = chainCallbacks(arguments);
+
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
     var data = '';
@@ -151,7 +169,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    return scResolve(resource, response, makeRequest(response, getChunks(response, resolveTrack(response, makeRequest(response, writeResponse(response))))));
+    return scResolve(resource, response, makeRequest(response, getChunks, resolveTrack, makeRequest, writeResponse));
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
@@ -163,7 +181,7 @@ var router = bee.route({
       return serveIndex(response);
     }
 
-    return scResolve(resource, response, makeRequest(response, writeResponse(response)));
+    return scResolve(resource, response, makeRequest(response, writeResponse));
   }
 });
 
