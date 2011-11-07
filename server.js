@@ -65,27 +65,6 @@ var getRemoteContent = function (response, callback) {
   return responseHandler;
 };
 
-var serveRemoteContent = function (response) {
-  var responseHandler = function (res) {
-    var reqOptions = url.parse(res.headers.location);
-    reqOptions = {
-      host: reqOptions.host,
-      port: 80,
-      path: reqOptions.pathname + reqOptions.search,
-      headers: {
-        'User-Agent': 'AudioJedit'
-      }
-    };
-
-    var req = http.get(reqOptions, writeResponse(response));
-
-    req.on('error', serveError(response));
-
-    return req;
-  };
-  return responseHandler;
-};
-
 var getJson = function (response, callbacks) {
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
@@ -168,7 +147,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    var callback = getJson(response, [getMp3, serveRemoteContent(response)]);
+    var callback = getJson(response, [getMp3, getRemoteContent(response, writeResponse(response))]);
 
     scResolve(resource, response, getRemoteContent(response, callback));
   },
@@ -182,7 +161,7 @@ var router = bee.route({
       return serveIndex(response);
     }
 
-    return scResolve(resource, response, serveRemoteContent(response));
+    return scResolve(resource, response, getRemoteContent(response, writeResponse(response)));
   }
 });
 
