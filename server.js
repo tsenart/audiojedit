@@ -31,22 +31,7 @@ var handleResponse = function (response, callback, errorStatusCode, errorHeaders
   return responseHandler;
 };
 
-var serveMp3 = function (response, callback, errorStatusCode, errorHeaders) {
-  var responseHandler = function (res) {
-    if (!res.headers.location) {
-      res.headers['Content-Length'] = 0;
-      errorStatusCode = errorStatusCode || res.statusCode;
-      errorHeaders = errorHeaders || res.headers;
-      response.writeHead(errorStatusCode, errorHeaders);
-      response.end();
-    } else {
-      callback && callback(res);
-    }
-  };
-  return responseHandler;
-};
-
-var serveMp3Callback = function (response) {
+var serveMp3 = function (response) {
   var responseHandler = function (res) {
     res.setEncoding('binary');
     var reqOptions = url.parse(res.headers.location);
@@ -105,7 +90,7 @@ var getMp3 = function (response, track) {
     }
   };
 
-  var req = http.get(reqOptions, serveMp3(response, serveMp3Callback(response), 404, { 'Content-Type': 'application/octet-stream' }));
+  var req = http.get(reqOptions, handleResponse(response, serveMp3(response), 404, { 'Content-Type': 'application/octet-stream' }));
 
   req.on('error', serveError(response));
 
