@@ -147,9 +147,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    var callback = getJson(response, [getMp3, getRemoteContent(response, writeResponse(response))]);
-
-    scResolve(resource, response, getRemoteContent(response, callback));
+    return scResolve(resource, response, getRemoteContent(response, getJson(response, [getMp3, getRemoteContent(response, writeResponse(response))])));
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
