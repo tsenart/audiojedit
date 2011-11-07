@@ -56,7 +56,7 @@ var getJson = function (response, callback) {
 
 var getMp3 = function (response, track) {
   track = JSON.parse(track);
-  reqOptions = url.parse(track.stream_url);
+  var reqOptions = url.parse(track.stream_url);
   reqOptions = {
     host: reqOptions.host,
     path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
