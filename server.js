@@ -108,11 +108,8 @@ var serveIndex = function (response) {
   });
 };
 
-var serveRemoteContent = function (response, binary) {
+var serveRemoteContent = function (response) {
   var responseHandler = function (res) {
-    if (binary) {
-      res.setEncoding('binary');
-    }
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
       host: reqOptions.host,
@@ -171,7 +168,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    var callback = getJson(response, [getMp3, serveRemoteContent(response, true)]);
+    var callback = getJson(response, [getMp3, serveRemoteContent(response)]);
 
     scResolve(resource, response, getRemoteContent(response, callback));
   },
