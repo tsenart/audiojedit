@@ -42,6 +42,18 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
+var getResponse = function (response, callback) {
+  var responseHandler = function (res) {
+    res.setEncoding('utf-8');
+    var data = '';
+    res.on('data', function (chunk) {
+      data += chunk;
+    });
+    res.on('end', callback(response, data));
+  };
+  return responseHandler;
+};
+
 var serveIndex = function (response) {
   return fs.readFile('./public/index.html', function (err, data) {
     if (err) {
@@ -166,8 +178,11 @@ var router = bee.route({
             }
           };
 
-          http.get(reqOptions, serveMp3(response))
-          .on('error', serveError(response))
+          var req = http.get(reqOptions, serveMp3(response));
+
+          req.on('error', serveError(response));
+
+          return req:
         })
       })
       .on('error', serveError(response))
