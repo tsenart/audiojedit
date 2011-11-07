@@ -31,27 +31,6 @@ var handleResponse = function (response, callback, errorStatusCode, errorHeaders
   return responseHandler;
 };
 
-var serveMp3 = function (response) {
-  var responseHandler = function (res) {
-    res.setEncoding('binary');
-    var reqOptions = url.parse(res.headers.location);
-    reqOptions = {
-      host: reqOptions.host,
-      path: reqOptions.pathname + reqOptions.search,
-      headers: {
-        'User-Agent': 'AudioJedit'
-      }
-    };
-
-    var req = http.get(reqOptions, writeResponse(response));
-
-    req.on('error', serveError(response));
-
-    return req;
-  };
-  return responseHandler;
-};
-
 var writeResponse = function (response) {
   var responseHandler = function (res) {
     response.writeHead(res.statusCode, res.headers);
@@ -110,6 +89,27 @@ var serveIndex = function (response) {
 
 var serveJson = function (response) {
   var responseHandler = function (res) {
+    var reqOptions = url.parse(res.headers.location);
+    reqOptions = {
+      host: reqOptions.host,
+      path: reqOptions.pathname + reqOptions.search,
+      headers: {
+        'User-Agent': 'AudioJedit'
+      }
+    };
+
+    var req = http.get(reqOptions, writeResponse(response));
+
+    req.on('error', serveError(response));
+
+    return req;
+  };
+  return responseHandler;
+};
+
+var serveMp3 = function (response) {
+  var responseHandler = function (res) {
+    res.setEncoding('binary');
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
       host: reqOptions.host,
