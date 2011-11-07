@@ -40,6 +40,33 @@ var serveIndex = function (response) {
   });
 };
 
+var serveJson = function (response) {
+  return function (res) {
+    var reqOptions = url.parse(res.headers.location);
+    reqOptions = {
+      host: reqOptions.host,
+      path: reqOptions.pathname + reqOptions.search,
+      headers: {
+        'User-Agent': 'AudioJedit'
+      }
+    };
+
+    var req = http.get(reqOptions, function (res) {
+      response.writeHead(res.statusCode, res.headers);
+      res.on('data', function (chunk) {
+        response.write(chunk);
+      });
+      res.on('end', function () {
+        response.end();
+      });
+    });
+
+    req.on('error', serveError(response));
+
+    return req;
+  };
+};
+
 // resolves 'resource' from the SC API, and if found, passes it to a callback
 var scResolve = function (resource, response, callback) {
   var reqOptions = {
@@ -143,35 +170,14 @@ var router = bee.route({
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, finalResponse, matches) {
     var format = matches.filter(Boolean).length == 3 ? matches.pop().substring(1) : 'html';
+    var resource = matches.join('/');
 
     // only json is permitted, else serve index
     if (format != 'json') {
-      return serveIndex(finalResponse)
+      return serveIndex(finalResponse);
     }
 
-    scResolve(matches.join('/'), finalResponse, function (res) {
-
-      var reqOptions = url.parse(res.headers.location);
-      reqOptions = {
-        host: reqOptions.host,
-        path: reqOptions.pathname + reqOptions.search,
-        headers: {
-          'User-Agent': 'AudioJedit'
-        }
-      };
-
-      http.get(reqOptions, function (res) {
-        finalResponse.writeHead(res.statusCode, res.headers);
-        res.on('data', function (chunk) {
-          finalResponse.write(chunk);
-        })
-        .on('end', function () {
-          finalResponse.end();
-        });
-      })
-      .on('error', serveError(finalResponse));
-
-    });
+    return scResolve(resource, finalResponse, serveJson(finalResponse));
   }
 });
 
