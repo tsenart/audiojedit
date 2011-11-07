@@ -87,29 +87,11 @@ var serveIndex = function (response) {
   });
 };
 
-var serveJson = function (response) {
+var serveRemoteContent = function (response, binary) {
   var responseHandler = function (res) {
-    var reqOptions = url.parse(res.headers.location);
-    reqOptions = {
-      host: reqOptions.host,
-      path: reqOptions.pathname + reqOptions.search,
-      headers: {
-        'User-Agent': 'AudioJedit'
-      }
-    };
-
-    var req = http.get(reqOptions, writeResponse(response));
-
-    req.on('error', serveError(response));
-
-    return req;
-  };
-  return responseHandler;
-};
-
-var serveMp3 = function (response) {
-  var responseHandler = function (res) {
-    res.setEncoding('binary');
+    if (binary) {
+      res.setEncoding('binary');
+    }
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
       host: reqOptions.host,
@@ -178,7 +160,7 @@ var router = bee.route({
         }
       };
 
-      var req = http.get(reqOptions, getJson(response, [getMp3, serveMp3(response)]));
+      var req = http.get(reqOptions, getJson(response, [getMp3, serveRemoteContent(response, true)]));
 
       req.on('error', serveError(response));
 
@@ -195,7 +177,7 @@ var router = bee.route({
       return serveIndex(response);
     }
 
-    return scResolve(resource, response, serveJson(response));
+    return scResolve(resource, response, serveRemoteContent(response));
   }
 });
 
