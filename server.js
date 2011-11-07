@@ -52,22 +52,25 @@ var scResolve = function (resource, response, callback) {
   return req;
 };
 
-var getMp3 = function (track, response, callback) {
-  track = JSON.parse(track);
-  var reqOptions = url.parse(track.stream_url);
-  reqOptions = {
-    host: reqOptions.host,
-    path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
-    headers: {
-      'User-Agent': 'AudioJedit'
-    }
+var resolveTrack = function (response, callback) {
+  var responseHandler = function (track) {
+    track = JSON.parse(track);
+    var reqOptions = url.parse(track.stream_url);
+    reqOptions = {
+      host: reqOptions.host,
+      path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
+      headers: {
+        'User-Agent': 'AudioJedit'
+      }
+    };
+
+    var req = http.get(reqOptions, handleResponse(response, callback, 404, { 'Content-Type': 'application/octet-stream' }));
+
+    req.on('error', serveError(response));
+
+    return req;
   };
-
-  var req = http.get(reqOptions, handleResponse(response, callback, 404, { 'Content-Type': 'application/octet-stream' }));
-
-  req.on('error', serveError(response));
-
-  return req;
+  return responseHandler;
 };
 
 var writeResponse = function (response) {
@@ -83,7 +86,7 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
-var getRemoteContent = function (response, callback) {
+var makeRequest = function (response, callback) {
   var responseHandler = function (res) {
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
@@ -104,7 +107,8 @@ var getRemoteContent = function (response, callback) {
   return responseHandler;
 };
 
-var getJson = function (response, callbacks) {
+// gets chunked data, then passes data to a callback
+var getChunks = function (response, callback) {
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
     var data = '';
@@ -112,7 +116,7 @@ var getJson = function (response, callbacks) {
       data += chunk;
     });
     res.on('end', function () {
-      callbacks[0](data, response, callbacks[1]);
+      callback(data);
     });
   };
   return responseHandler;
@@ -147,7 +151,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    return scResolve(resource, response, getRemoteContent(response, getJson(response, [getMp3, getRemoteContent(response, writeResponse(response))])));
+    return scResolve(resource, response, makeRequest(response, getChunks(response, resolveTrack(response, makeRequest(response, writeResponse(response))))));
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
@@ -159,7 +163,7 @@ var router = bee.route({
       return serveIndex(response);
     }
 
-    return scResolve(resource, response, getRemoteContent(response, writeResponse(response)));
+    return scResolve(resource, response, makeRequest(response, writeResponse(response)));
   }
 });
 
