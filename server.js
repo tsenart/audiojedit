@@ -112,7 +112,7 @@ var serveMp3 = function (resolve) {
       response.end();
     } else {
       res.setEncoding('binary');
-      reqOptions = url.parse(res.headers.location);
+      var reqOptions = url.parse(res.headers.location);
       reqOptions = {
         host: reqOptions.host,
         path: reqOptions.pathname + reqOptions.search,
