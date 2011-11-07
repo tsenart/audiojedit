@@ -104,7 +104,7 @@ var serveJson = function (response) {
 };
 
 
-var serveMp3 = function (resolve) {
+var serveMp3 = function (response) {
   var responseHandler = function (res) {
     if (!res.headers.location) {
       res.headers['Content-Length'] = 0;
