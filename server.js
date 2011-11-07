@@ -42,7 +42,7 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
-var getResponse = function (response, callback) {
+var getJson = function (response, callback) {
   var responseHandler = function (res) {
     res.setEncoding('utf-8');
     var data = '';
@@ -168,7 +168,9 @@ var router = bee.route({
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
-    scResolve(matches.join('/'), response, /* getTrackJson */ function (res) {
+    var resource = matches.join('/');
+
+    scResolve(resource, response, /* getTrackJson */ function (res) {
       var reqOptions = url.parse(res.headers.location);
       reqOptions = {
         host: reqOptions.host,
@@ -179,7 +181,7 @@ var router = bee.route({
         }
       };
 
-      var req = http.get(reqOptions, getReponse(reponse, getMp3));
+      var req = http.get(reqOptions, getJson(reponse, getMp3));
 
       req.on('error', serveError(response));
 
