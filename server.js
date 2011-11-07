@@ -73,13 +73,13 @@ var getJson = function (response, callback) {
       data += chunk;
     });
     res.on('end', function () {
-      callback(response, data);
+      callback(data, response);
     });
   };
   return responseHandler;
 };
 
-var getMp3 = function (response, track) {
+var getMp3 = function (track, response) {
   track = JSON.parse(track);
   var reqOptions = url.parse(track.stream_url);
   reqOptions = {
