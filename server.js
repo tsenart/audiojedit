@@ -31,6 +31,45 @@ var handleResponse = function (response, callback, errorStatusCode, errorHeaders
   return responseHandler;
 };
 
+// resolves 'resource' from the SC API, and if found, passes it to a callback
+var scResolve = function (resource, response, callback) {
+  var reqOptions = {
+    host: 'api.soundcloud.com',
+    port: 80,
+    path: '/resolve.json?client_id=' + SC_CLIENT_ID + '&url=http://soundcloud.com/' + resource,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'AudioJedit'
+    }
+  };
+
+  var req = http.request(reqOptions, handleResponse(response, callback));
+
+  req.on('error', serveError(response));
+
+  req.end();
+
+  return req;
+};
+
+var getMp3 = function (track, response, callback) {
+  track = JSON.parse(track);
+  var reqOptions = url.parse(track.stream_url);
+  reqOptions = {
+    host: reqOptions.host,
+    path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
+    headers: {
+      'User-Agent': 'AudioJedit'
+    }
+  };
+
+  var req = http.get(reqOptions, handleResponse(response, callback, 404, { 'Content-Type': 'application/octet-stream' }));
+
+  req.on('error', serveError(response));
+
+  return req;
+};
+
 var writeResponse = function (response) {
   var responseHandler = function (res) {
     response.writeHead(res.statusCode, res.headers);
@@ -79,24 +118,6 @@ var getJson = function (response, callbacks) {
   return responseHandler;
 };
 
-var getMp3 = function (track, response, callback) {
-  track = JSON.parse(track);
-  var reqOptions = url.parse(track.stream_url);
-  reqOptions = {
-    host: reqOptions.host,
-    path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
-    headers: {
-      'User-Agent': 'AudioJedit'
-    }
-  };
-
-  var req = http.get(reqOptions, handleResponse(response, callback, 404, { 'Content-Type': 'application/octet-stream' }));
-
-  req.on('error', serveError(response));
-
-  return req;
-};
-
 var serveIndex = function (response) {
   return fs.readFile('./public/index.html', function (err, data) {
     if (err) {
@@ -106,27 +127,6 @@ var serveIndex = function (response) {
       response.end(data);
     }
   });
-};
-
-// resolves 'resource' from the SC API, and if found, passes it to a callback
-var scResolve = function (resource, response, callback) {
-  var reqOptions = {
-    host: 'api.soundcloud.com',
-    port: 80,
-    path: '/resolve.json?client_id=' + SC_CLIENT_ID + '&url=http://soundcloud.com/' + resource,
-    method: 'GET',
-    headers: {
-      'User-Agent': 'AudioJedit'
-    }
-  };
-
-  var req = http.request(reqOptions, handleResponse(response, callback));
-
-  req.on('error', serveError(response));
-
-  req.end();
-
-  return req;
 };
 
 var router = bee.route({
