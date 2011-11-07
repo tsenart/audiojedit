@@ -40,22 +40,29 @@ var serveMp3 = function (response, callback, errorStatusCode, errorHeaders) {
       response.writeHead(errorStatusCode, errorHeaders);
       response.end();
     } else {
-      res.setEncoding('binary');
-      var reqOptions = url.parse(res.headers.location);
-      reqOptions = {
-        host: reqOptions.host,
-        path: reqOptions.pathname + reqOptions.search,
-        headers: {
-          'User-Agent': 'AudioJedit'
-        }
-      };
-
-      var req = http.get(reqOptions, writeResponse(response));
-
-      req.on('error', serveError(response));
-
-      return req;
+      callback && callback(res);
     }
+  };
+  return responseHandler;
+};
+
+var serveMp3Callback = function (response) {
+  var responseHandler = function (res) {
+    res.setEncoding('binary');
+    var reqOptions = url.parse(res.headers.location);
+    reqOptions = {
+      host: reqOptions.host,
+      path: reqOptions.pathname + reqOptions.search,
+      headers: {
+        'User-Agent': 'AudioJedit'
+      }
+    };
+
+    var req = http.get(reqOptions, writeResponse(response));
+
+    req.on('error', serveError(response));
+
+    return req;
   };
   return responseHandler;
 };
@@ -98,7 +105,7 @@ var getMp3 = function (response, track) {
     }
   };
 
-  var req = http.get(reqOptions, serveMp3(response, null, 404, { 'Content-Type': 'application/octet-stream' }));
+  var req = http.get(reqOptions, serveMp3(response, serveMp3Callback(response), 404, { 'Content-Type': 'application/octet-stream' }));
 
   req.on('error', serveError(response));
 
