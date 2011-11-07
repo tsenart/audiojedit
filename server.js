@@ -73,6 +73,34 @@ var serveJson = function (response) {
   return responseHandler;
 };
 
+
+var serveMp3 = function (resolve) {
+  var responseHandler = function (res) {
+    if (!res.headers.location) {
+      res.headers['Content-Length'] = 0;
+      response.writeHead(404, { 'Content-Type': 'application/octet-stream' });
+      response.end();
+    } else {
+      res.setEncoding('binary');
+      reqOptions = url.parse(res.headers.location);
+      reqOptions = {
+        host: reqOptions.host,
+        path: reqOptions.pathname + reqOptions.search,
+        headers: {
+          'User-Agent': 'AudioJedit'
+        }
+      };
+
+      var req = http.get(reqOptions, writeResponse(response));
+
+      req.on('error', serveError(response));
+
+      return req;
+    }
+  };
+  return responseHandler;
+};
+
 // resolves 'resource' from the SC API, and if found, passes it to a callback
 var scResolve = function (resource, response, callback) {
   var reqOptions = {
@@ -138,35 +166,7 @@ var router = bee.route({
             }
           };
 
-          http.get(reqOptions, /* callback, serve */ function (res) {
-            if (!res.headers.location) {
-              res.headers['Content-Length'] = 0;
-              response.writeHead(404, { 'Content-Type': 'application/octet-stream' });
-              response.end();
-            } else {
-              res.setEncoding('binary');
-              reqOptions = url.parse(res.headers.location);
-              reqOptions = {
-                host: reqOptions.host,
-                path: reqOptions.pathname + reqOptions.search,
-                headers: {
-                  'User-Agent': 'AudioJedit'
-                }
-              };
-
-              http.get(reqOptions, /* serveMp3 */ function (res) {
-                response.writeHead(res.statusCode, res.headers);
-
-                res.on('data', function (chunk) {
-                  response.write(chunk);
-                })
-                .on('end', function () {
-                  response.end();
-                });
-              })
-              .on('error', serveError(response))
-            }
-          })
+          http.get(reqOptions, serveMp3(response))
           .on('error', serveError(response))
         })
       })
