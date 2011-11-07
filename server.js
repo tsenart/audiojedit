@@ -54,6 +54,24 @@ var getResponse = function (response, callback) {
   return responseHandler;
 };
 
+var getMp3 = function (response, track) {
+  track = JSON.parse(track);
+  reqOptions = url.parse(track.stream_url);
+  reqOptions = {
+    host: reqOptions.host,
+    path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
+    headers: {
+      'User-Agent': 'AudioJedit'
+    }
+  };
+
+  var req = http.get(reqOptions, serveMp3(response));
+
+  req.on('error', serveError(response));
+
+  return req;
+};
+
 var serveIndex = function (response) {
   return fs.readFile('./public/index.html', function (err, data) {
     if (err) {
@@ -161,31 +179,11 @@ var router = bee.route({
         }
       };
 
-      http.get(reqOptions, /* getTrackStreamingUrl */ function (res) {
-        res.setEncoding('utf-8');
-        var track = '';
-        res.on('data', function (chunk) {
-          track += chunk;
-        })
-        .on('end', /* callback, getMp3 */ function () {
-          track = JSON.parse(track);
-          reqOptions = url.parse(track.stream_url);
-          reqOptions = {
-            host: reqOptions.host,
-            path: reqOptions.pathname + '?client_id=' + SC_CLIENT_ID,
-            headers: {
-              'User-Agent': 'AudioJedit'
-            }
-          };
+      var req = http.get(reqOptions, getReponse(reponse, getMp3));
 
-          var req = http.get(reqOptions, serveMp3(response));
+      req.on('error', serveError(response));
 
-          req.on('error', serveError(response));
-
-          return req:
-        })
-      })
-      .on('error', serveError(response))
+      return req;
     });
   },
 
