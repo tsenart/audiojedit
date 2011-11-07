@@ -49,7 +49,9 @@ var getJson = function (response, callback) {
     res.on('data', function (chunk) {
       data += chunk;
     });
-    res.on('end', callback(response, data));
+    res.on('end', function () {
+      callback(response, data);
+    });
   };
   return responseHandler;
 };
@@ -181,7 +183,7 @@ var router = bee.route({
         }
       };
 
-      var req = http.get(reqOptions, getJson(reponse, getMp3));
+      var req = http.get(reqOptions, getJson(response, getMp3));
 
       req.on('error', serveError(response));
 
