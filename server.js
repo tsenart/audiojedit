@@ -16,11 +16,13 @@ var serveError = function (response) {
   };
 };
 
-var handleResponse = function (response, callback) {
+var handleResponse = function (response, callback, errorStatusCode, errorHeaders) {
   var responseHandler = function (res) {
     if (!res.headers.location) {
       res.headers['Content-Length'] = 0;
-      response.writeHead(res.statusCode, res.headers);
+      errorStatusCode = errorStatusCode || res.statusCode;
+      errorHeaders = errorHeaders || res.headers;
+      response.writeHead(errorStatusCode, errorHeaders);
       response.end();
     } else {
       callback && callback(res);
