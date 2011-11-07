@@ -4,10 +4,10 @@ var url = require('url'),
     bee = require('beeline'),
     SC_CLIENT_ID = '1288146c708a6fa789f74748fe960337';
 
-var errorHandler = function (err, res) {
+var errorHandler = function (err, response) {
   console.log(err);
-  res.writeHead(500);
-  res.end();
+  response.writeHead(500);
+  response.end();
 };
 
 var serveError = function (response) {
@@ -29,6 +29,19 @@ var handleResponse = function (response, callback) {
   return responseHandler;
 };
 
+var writeResponse = function (response) {
+  var responseHandler = function (res) {
+    response.writeHead(res.statusCode, res.headers);
+    res.on('data', function (chunk) {
+      response.write(chunk);
+    });
+    res.on('end', function () {
+      response.end();
+    });
+  };
+  return responseHandler;
+};
+
 var serveIndex = function (response) {
   return fs.readFile('./public/index.html', function (err, data) {
     if (err) {
@@ -41,7 +54,7 @@ var serveIndex = function (response) {
 };
 
 var serveJson = function (response) {
-  return function (res) {
+  var responseHandler = function (res) {
     var reqOptions = url.parse(res.headers.location);
     reqOptions = {
       host: reqOptions.host,
@@ -51,20 +64,13 @@ var serveJson = function (response) {
       }
     };
 
-    var req = http.get(reqOptions, function (res) {
-      response.writeHead(res.statusCode, res.headers);
-      res.on('data', function (chunk) {
-        response.write(chunk);
-      });
-      res.on('end', function () {
-        response.end();
-      });
-    });
+    var req = http.get(reqOptions, writeResponse(response));
 
     req.on('error', serveError(response));
 
     return req;
   };
+  return responseHandler;
 };
 
 // resolves 'resource' from the SC API, and if found, passes it to a callback
@@ -99,12 +105,12 @@ var router = bee.route({
     '.js': 'text/javascript'
   }),
 
-  'r`^/(index(\\.html?)?)?(\\?.*)?$`': function (req, finalResponse, matches) {
-    return serveIndex(finalResponse);
+  'r`^/(index(\\.html?)?)?(\\?.*)?$`': function (req, response, matches) {
+    return serveIndex(response);
   },
 
-  'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, finalResponse, matches) {
-    scResolve(matches.join('/'), finalResponse, function (res) {
+  'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
+    scResolve(matches.join('/'), response, /* getTrackJson */ function (res) {
       var reqOptions = url.parse(res.headers.location);
       reqOptions = {
         host: reqOptions.host,
@@ -115,13 +121,13 @@ var router = bee.route({
         }
       };
 
-      http.get(reqOptions, function (res) {
+      http.get(reqOptions, /* getTrackStreamingUrl */ function (res) {
         res.setEncoding('utf-8');
         var track = '';
         res.on('data', function (chunk) {
           track += chunk;
         })
-        .on('end', function () {
+        .on('end', /* callback, getMp3 */ function () {
           track = JSON.parse(track);
           reqOptions = url.parse(track.stream_url);
           reqOptions = {
@@ -132,11 +138,11 @@ var router = bee.route({
             }
           };
 
-          http.get(reqOptions, function (res) {
+          http.get(reqOptions, /* callback, serve */ function (res) {
             if (!res.headers.location) {
               res.headers['Content-Length'] = 0;
-              finalResponse.writeHead(404, { 'Content-Type': 'application/octet-stream' });
-              finalResponse.end();
+              response.writeHead(404, { 'Content-Type': 'application/octet-stream' });
+              response.end();
             } else {
               res.setEncoding('binary');
               reqOptions = url.parse(res.headers.location);
@@ -148,36 +154,36 @@ var router = bee.route({
                 }
               };
 
-              http.get(reqOptions, function (res) {
-                finalResponse.writeHead(res.statusCode, res.headers);
+              http.get(reqOptions, /* serveMp3 */ function (res) {
+                response.writeHead(res.statusCode, res.headers);
 
                 res.on('data', function (chunk) {
-                  finalResponse.write(chunk);
+                  response.write(chunk);
                 })
                 .on('end', function () {
-                  finalResponse.end();
+                  response.end();
                 });
               })
-              .on('error', serveError(finalResponse))
+              .on('error', serveError(response))
             }
           })
-          .on('error', serveError(finalResponse))
+          .on('error', serveError(response))
         })
       })
-      .on('error', serveError(finalResponse))
+      .on('error', serveError(response))
     });
   },
 
-  'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, finalResponse, matches) {
+  'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
     var format = matches.filter(Boolean).length == 3 ? matches.pop().substring(1) : 'html';
     var resource = matches.join('/');
 
     // only json is permitted, else serve index
     if (format != 'json') {
-      return serveIndex(finalResponse);
+      return serveIndex(response);
     }
 
-    return scResolve(resource, finalResponse, serveJson(finalResponse));
+    return scResolve(resource, response, serveJson(response));
   }
 });
 
