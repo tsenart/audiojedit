@@ -70,12 +70,18 @@ var scResolve = function (resource, response) {
 };
 
 // creates a response handler which presumes the response is the track JSON, and requests the track itself from the stream_url
-// IF THERE IS NO STREAM URL, then this function crashes the server
 var requestTrack = function (response) {
   var callback = chainCallbacks(arguments);
 
   var responseHandler = function (track) {
     track = JSON.parse(track);
+
+    if (!track.stream_url) {
+      response.writeHead(404, { 'Content-Type': 'application/octet-stream' });
+      response.end();
+      return;
+    }
+
     var reqOptions = url.parse(track.stream_url);
     reqOptions = {
       host: reqOptions.host,
