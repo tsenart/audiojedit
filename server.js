@@ -4,15 +4,17 @@ var url = require('url'),
     bee = require('beeline'),
     SC_CLIENT_ID = '1288146c708a6fa789f74748fe960337';
 
-var makeChain = function (args) {
-  var chain = Array.prototype.slice.call(args, 2);
-  chain.unshift(args[0]);
+var makeChain = function (args, start) {
+  start = start || 0;
+  var chain = Array.prototype.slice.call(args, start + 2);
+  chain.unshift(args[start]);
   return chain;
 };
 
-var chainCallbacks = function (args) {
-  var chain = makeChain(args);
-  var callback = args[1].apply(this, chain);
+var chainCallbacks = function (args, start) {
+  start = start || 0;
+  var chain = makeChain(args, start);
+  var callback = args[start + 1].apply(this, chain);
   return callback;
 };
 
@@ -28,6 +30,7 @@ var serveError = function (response) {
   };
 };
 
+// creates a response handler that verifies the response prior to executing a callback
 var handleResponse = function (response, callback, errorStatusCode, errorHeaders) {
   var responseHandler = function (res) {
     if (!res.headers.location) {
@@ -43,10 +46,9 @@ var handleResponse = function (response, callback, errorStatusCode, errorHeaders
   return responseHandler;
 };
 
-// resolves 'resource' from the SC API, and if found, passes it to a callback
+// resolves 'resource' from the SC API resolve endpoint, and passes the response to a callback
 var scResolve = function (resource, response) {
-  var chainableArgs = Array.prototype.slice.call(arguments, 1);
-  var callback = chainCallbacks(chainableArgs);
+  var callback = chainCallbacks(arguments, 1);
 
   var reqOptions = {
     host: 'api.soundcloud.com',
@@ -67,7 +69,9 @@ var scResolve = function (resource, response) {
   return req;
 };
 
-var resolveTrack = function (response) {
+// creates a response handler which presumes the response is the track JSON, and requests the track itself from the stream_url
+// IF THERE IS NO STREAM URL, then this function crashes the server
+var requestTrack = function (response) {
   var callback = chainCallbacks(arguments);
 
   var responseHandler = function (track) {
@@ -90,6 +94,7 @@ var resolveTrack = function (response) {
   return responseHandler;
 };
 
+// creates a response handler that writes to the response
 var writeResponse = function (response) {
   var responseHandler = function (res) {
     response.writeHead(res.statusCode, res.headers);
@@ -103,6 +108,7 @@ var writeResponse = function (response) {
   return responseHandler;
 };
 
+// creates a response handler that makes a subsequent request with options based on the response.headers.location
 var makeRequest = function (response) {
   var callback = chainCallbacks(arguments);
 
@@ -126,7 +132,7 @@ var makeRequest = function (response) {
   return responseHandler;
 };
 
-// gets chunked data, then passes data to a callback
+// creates a response handler that gets chunked data, then passes that [buffered] data to a callback
 var getChunks = function (response) {
   var callback = chainCallbacks(arguments);
 
@@ -172,7 +178,7 @@ var router = bee.route({
   'r`^/([\\w-_]+)/([\\w-_]+)/audio`': function (req, response, matches) {
     var resource = matches.join('/');
 
-    return scResolve(resource, response, makeRequest, getChunks, resolveTrack, makeRequest, writeResponse);
+    return scResolve(resource, response, makeRequest, getChunks, requestTrack, makeRequest, writeResponse);
   },
 
   'r`^/([\\w-_]+)/([\\w-_]+)(\\.\\w+)?`': function (req, response, matches) {
